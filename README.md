@@ -21,6 +21,17 @@ Devido às diversas variações dos equipamentos Busca Preço da Gertec, não é
   <li>Integração com APIs externas de consulta de preço (opcional)</li>
 </ul>
 
+<h2>Capturas de tela</h2>
+
+<h3>Tela inicial</h3>
+<img src="./assets/screenshots/screenshots_home.png" width="800">
+
+<h3>Configuração de dispositivo</h3>
+<img src="./assets/screenshots/screenshots_modaldevice.png" width="800">
+
+<h3>Configuração de playlist</h3>
+<img src="./assets/screenshots/screenshots_modalplaylit.png" width="800">
+
 <h2>Como utilizar</h2>
 
 <h3>1. Instalação</h3>
