@@ -11,6 +11,26 @@
   "background_color": "#4338ca",
   "orientation": "any",
   "lang": "pt-BR",
+    "screenshots": [
+    {
+      "src": "/assets/screenshots/screenshots_home.png",
+      "sizes": "1280x791",
+      "type": "image/png",
+      "label": "Tela inicial"
+    },
+    {
+      "src": "/assets/screenshots/screenshots_modaldevice.png",
+      "sizes": "1280x791",
+      "type": "image/png",
+      "label": "Configuração de dispositivo"
+    },
+    {
+      "src": "/assets/screenshots/screenshots_modalplaylit.png",
+      "sizes": "1280x791",
+      "type": "image/png",
+      "label": "Configuração de playlist"
+    }
+  ],
   "icons": [
     { "src": "/res/icons/maskable_icon_x48.png",  "sizes": "48x48",   "type": "image/png", "purpose": "maskable"},
     { "src": "/res/icons/maskable_icon_x72.png",  "sizes": "72x72",   "type": "image/png", "purpose": "maskable"},
