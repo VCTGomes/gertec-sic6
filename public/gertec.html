@@ -1,0 +1,591 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    
+    <title>Gertec - SIC7</title>
+
+    <link rel="stylesheet" href="/assets/css/tailwind.min.css">
+    <link href="/assets/css/all.min.css" rel="stylesheet">
+
+    <link rel="stylesheet" href="/assets/css/header.css">
+
+    <link rel="icon" type="image/x-icon" href="/res/icons/favicon.ico">
+    <meta name="theme-color" content="#1d4ed8">
+
+    <link rel="manifest" href="/assets/manifest.json">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="apple-touch-icon" href="/res/icons/maskable_icon_x512.png">
+
+    <style>
+        html { background-color: #1d4ed8; }
+        body { background-color: #f3f4f6; font-family: 'Inter', sans-serif; }
+        header.wco-header { background-color: #1d4ed8 !important; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans antialiased min-h-screen flex flex-col">
+
+    <header class="bg-blue-700 text-white shadow-md sticky top-0 z-10 flex flex-col w-full wco-header">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center w-full">
+            <div class="flex items-center gap-3">
+                <a href="/" class="hidden wco-no-drag bg-blue-800 hover:bg-blue-600 transition-colors p-2 rounded-lg shadow-inner flex items-center justify-center" title="Voltar para a Home">
+                    <i class="fa-solid fa-house text-sm text-blue-200"></i>
+                </a>
+                <div class="flex items-center gap-3">
+                    <img src="/res/logo.png" alt="Logo MD" class="h-8 w-auto object-contain hidden sm:block" onerror="this.style.display='none'">
+                    <h1 class="text-base sm:text-lg font-black tracking-tight uppercase">Monitor de Terminais</h1>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <span id="qtdTerminais" class="bg-blue-800 text-blue-100 text-xs font-bold px-2.5 py-1 rounded-full">0</span>
+                <button onclick="abrirModalConfig()" class="wco-no-drag bg-blue-800 hover:bg-blue-600 transition-colors p-2 rounded-lg flex items-center justify-center" title="Configurações">
+                    <i class="fa-solid fa-gear text-sm text-blue-200"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-7xl mx-auto p-4 sm:p-6 w-full grid grid-cols-1 lg:grid-cols-[420px_minmax(0,1fr)] gap-6 items-start">
+        <div class="flex flex-col gap-4">
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 w-full">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="font-semibold text-gray-700 flex items-center gap-2">
+                        <i class="fa-solid fa-network-wired text-blue-500"></i> Terminais
+                    </h2>
+                    <span id="qtdTerminaisCard" class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded-full">0</span>
+                </div>
+                <div id="listaTerminais" class="flex flex-col gap-2">
+                    <div class="text-center text-gray-400 py-4 text-sm">Aguardando conexões...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden w-full flex flex-col">
+            <div class="flex border-b border-gray-100 bg-gray-50 text-sm">
+                <button id="tabMainBtn_leituras" onclick="mudarAbaMain('leituras')" class="flex-1 py-3.5 font-bold border-b-2 border-blue-600 text-blue-700 transition-colors flex justify-center items-center gap-2">
+                    <i class="fa-solid fa-barcode"></i> Leituras Recentes
+                </button>
+                <button id="tabMainBtn_ranking" onclick="mudarAbaMain('ranking')" class="flex-1 py-3.5 font-bold border-b-2 border-transparent text-gray-500 hover:text-blue-600 transition-colors flex justify-center items-center gap-2">
+                    <i class="fa-solid fa-chart-column"></i> Mais Buscados
+                </button>
+            </div>
+
+            <div id="tabMain_leituras" class="flex flex-col">
+                <div class="px-4 sm:px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-white">
+                    <h3 class="font-semibold text-gray-700">Histórico de Terminais</h3>
+                    <button onclick="limparHistorico()" class="text-xs bg-red-50 text-red-600 px-3 py-1.5 rounded hover:bg-red-100 transition-colors font-semibold flex items-center gap-2">
+                        <i class="fa-solid fa-trash-can"></i> Limpar
+                    </button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-gray-600 min-w-[700px]">
+                        <thead class="bg-gray-50 text-gray-700 text-xs uppercase font-semibold">
+                            <tr>
+                                <th class="px-4 py-4 border-b border-gray-100">Hora</th>
+                                <th class="px-4 py-4 border-b border-gray-100">Terminal</th>
+                                <th class="px-4 py-4 border-b border-gray-100">Código</th>
+                                <th class="px-4 py-4 border-b border-gray-100">Produto</th>
+                                <th class="px-4 py-4 border-b border-gray-100">Preço (R$)</th>
+                                <th class="px-4 py-4 border-b border-gray-100 text-center">Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabelaLeituras" class="divide-y divide-gray-100">
+                            <tr id="linhaVazia">
+                                <td colspan="6" class="text-center py-12 text-gray-400">Nenhuma leitura registrada.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="tabMain_ranking" class="hidden flex-col">
+                <div class="px-4 sm:px-6 py-4 border-b border-gray-100 flex items-center bg-white">
+                    <h3 class="font-semibold text-gray-700">Ranking Geral de Produtos</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-gray-600 min-w-[700px]">
+                        <thead class="bg-gray-50 text-gray-700 text-xs uppercase font-semibold">
+                            <tr>
+                                <th class="px-4 py-4 border-b border-gray-100 text-center w-12">Nº</th>
+                                <th class="px-4 py-4 border-b border-gray-100">Código</th>
+                                <th class="px-4 py-4 border-b border-gray-100">Produto</th>
+                                <th class="px-4 py-4 border-b border-gray-100">Preço (R$)</th>
+                                <th class="px-4 py-4 border-b border-gray-100 text-center">Acessos</th>
+                                <th class="px-4 py-4 border-b border-gray-100 text-center">Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabelaRanking" class="divide-y divide-gray-100">
+                            <tr><td colspan="6" class="text-center py-12 text-gray-400">Aguardando dados...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal Mídias -->
+    <div id="modalMidia" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-opacity">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="bg-blue-700 px-5 py-4 flex justify-between items-center text-white shrink-0 shadow-md z-20">
+                <h3 class="font-bold flex items-center gap-2 text-lg">
+                    <i class="fa-solid fa-images"></i> Gerenciador de Mídias
+                    <span id="ipModalMidia" class="bg-blue-900 text-blue-100 font-mono text-xs px-2 py-0.5 rounded ml-2"></span>
+                    <span id="tipoModalMidia" class="bg-emerald-500 text-white font-mono text-xs px-2 py-0.5 rounded ml-1"></span>
+                </h3>
+                <button onclick="fecharModalMidia()" class="text-blue-200 hover:text-white transition-colors bg-blue-800 hover:bg-blue-600 w-8 h-8 rounded-full flex items-center justify-center">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="flex border-b border-gray-200 bg-gray-50 text-sm z-10 shrink-0">
+                <button id="tabBtn_arquivos" onclick="mudarAba('arquivos')" class="flex-1 py-3.5 font-bold border-b-2 border-blue-600 text-blue-700 transition-colors flex justify-center items-center gap-2">
+                    <i class="fa-regular fa-folder-open"></i> Arquivos em Memória
+                </button>
+                <button id="tabBtn_playlist" onclick="mudarAba('playlist')" class="flex-1 py-3.5 font-bold border-b-2 border-transparent text-gray-500 hover:text-blue-600 transition-colors flex justify-center items-center gap-2">
+                    <i class="fa-solid fa-list-ul"></i> Ordem de Exibição
+                </button>
+            </div>
+            <div class="p-5 overflow-y-auto bg-white flex-1 relative">
+                <div id="statusMidia" class="absolute top-0 left-0 right-0 text-sm text-center font-bold py-2 bg-blue-50 text-blue-700 z-10 hidden shadow border-b border-blue-100"></div>
+                <div id="tab_arquivos" class="flex flex-col gap-4">
+                    <div id="infoResolucao" class="text-xs text-gray-500 text-center font-medium -mb-2"></div>
+                    <div class="flex gap-3">
+                        <button onclick="buscarListaMidias()" class="flex-1 bg-blue-50 text-blue-700 py-2.5 rounded-lg font-semibold hover:bg-blue-100 transition-colors border border-blue-100 shadow-sm flex justify-center items-center gap-2">
+                            <i class="fa-solid fa-hard-drive"></i> Ler Memória
+                        </button>
+                        <label id="labelUploadMidia" class="flex-1 bg-emerald-600 text-white py-2.5 rounded-lg font-semibold text-center cursor-pointer hover:bg-emerald-700 transition-colors shadow-sm flex justify-center items-center gap-2">
+                            <i class="fa-solid fa-upload"></i> Enviar Arquivo
+                            <input type="file" class="hidden" onchange="uploadArquivo(this)">
+                        </label>
+                    </div>
+                    <div id="containerListaArquivos" class="flex flex-col gap-2 min-h-[120px] border border-gray-100 rounded-lg p-2 bg-gray-50/50"></div>
+                    <div id="previewMidiaContainer" class="hidden mt-2 border border-gray-200 rounded-lg p-3 bg-gray-50 flex flex-col items-center justify-center min-h-[150px] relative">
+                        <p id="nomePreview" class="text-xs font-mono text-gray-500 mb-2 bg-white px-2 py-1 rounded border border-gray-200"></p>
+                        <div id="mediaRender" class="flex justify-center w-full"></div>
+                    </div>
+                </div>
+                <div id="tab_playlist" class="hidden flex-col gap-4">
+                    <div class="bg-blue-50 border border-blue-100 p-3 rounded-lg text-sm text-blue-800 flex justify-between items-center shadow-sm">
+                        <span class="font-medium"><i class="fa-solid fa-circle-info mr-2 opacity-75"></i>Baixe a playlist atual para editá-la.</span>
+                        <button onclick="buscarPlaylist()" class="bg-blue-600 text-white px-4 py-2 rounded-md font-bold shadow hover:bg-blue-700 transition-colors flex items-center">
+                            <i class="fa-solid fa-download mr-2"></i> Ler Terminal
+                        </button>
+                    </div>
+                    <div id="containerPlaylist" class="divide-y divide-gray-100 max-h-[35vh] overflow-y-auto bg-white border rounded-lg shadow-sm"></div>
+                    <div class="flex gap-2 items-center bg-gray-50 p-2 rounded-lg border border-gray-200">
+                        <select id="selectNovaMidia" class="flex-1 border border-gray-300 rounded-md px-3 py-2.5 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            <option value="">Carregue a aba Arquivos primeiro...</option>
+                        </select>
+                        <button onclick="adicionarNaPlaylist()" class="bg-blue-600 text-white px-5 py-2.5 rounded-md text-sm font-bold shadow hover:bg-blue-700 transition-colors flex items-center gap-2">
+                            <i class="fa-solid fa-plus"></i> Inserir
+                        </button>
+                    </div>
+                    <button onclick="salvarPlaylist()" class="w-full bg-emerald-600 text-white py-3.5 rounded-lg font-bold shadow-md hover:bg-emerald-700 transition-colors mt-2 flex items-center justify-center gap-2 text-base">
+                        <i class="fa-solid fa-floppy-disk"></i> GRAVAR PLAYLIST NO TERMINAL
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Debug -->
+    <div id="modalDebug" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 z-[60] flex items-center justify-center p-4 backdrop-blur-sm transition-opacity">
+        <div class="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col">
+            <div class="bg-gray-800 px-4 py-3 flex justify-between items-center border-b border-gray-700 shrink-0">
+                <h3 class="text-emerald-400 font-mono text-sm font-bold flex items-center gap-2">
+                    <i class="fa-solid fa-terminal"></i> Terminal de Debug
+                    <span id="ipModalDebug" class="bg-gray-700 text-gray-300 px-2 py-0.5 rounded ml-2 text-xs"></span>
+                </h3>
+                <button onclick="fecharModalDebug()" class="text-gray-400 hover:text-white transition-colors">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div id="debugLogsContainer" class="p-4 h-80 overflow-y-auto font-mono text-xs flex flex-col gap-1.5 bg-gray-950 text-gray-300">
+                <div id="placeholderDebug" class="text-gray-600 italic text-center mt-4">Aguardando comandos deste terminal...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Config -->
+    <div id="modalConfig" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-opacity">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col">
+            <div class="bg-blue-700 px-5 py-4 flex justify-between items-center text-white shrink-0">
+                <h3 class="font-bold flex items-center gap-2">
+                    <i class="fa-solid fa-gear"></i> Configurações de Portas
+                </h3>
+                <button onclick="fecharModalConfig()" class="text-blue-200 hover:text-white bg-blue-800 hover:bg-blue-600 w-8 h-8 rounded-full flex items-center justify-center transition-colors">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="p-5 flex flex-col gap-4">
+                <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800 flex items-start gap-2">
+                    <i class="fa-solid fa-triangle-exclamation mt-0.5 shrink-0"></i>
+                    <span>Alterar as portas requer reinicialização do servidor para ter efeito.</span>
+                </div>
+                <div class="flex flex-col gap-1">
+                    <label class="text-xs font-bold text-gray-600 uppercase">Porta BP G2 (TCP)</label>
+                    <input type="number" id="inputPortaBP" class="border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono">
+                    <span class="text-xs text-gray-400">Padrão: 6500</span>
+                </div>
+                <div class="flex flex-col gap-1">
+                    <label class="text-xs font-bold text-gray-600 uppercase">Porta TC-506 (TCP)</label>
+                    <input type="number" id="inputPortaTC" class="border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono">
+                    <span class="text-xs text-gray-400">Padrão: 16510</span>
+                </div>
+                <div id="msgConfig" class="hidden text-xs font-semibold text-center py-2 rounded-lg"></div>
+                <button onclick="salvarConfig()" id="btnSalvarConfig" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-bold transition-colors flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-floppy-disk"></i> Salvar Configurações
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+
+        let listaBP = [];
+        let listaTC = [];
+        let ipAlvo = null;
+        let tipoTerminalAlvo = 'TC';
+        let logsPorIP = {};
+        let ipDebugAtual = null;
+        let historicoCompleto = [];
+
+        function renderizarTerminais() {
+            const terminais = [...listaBP.map(t => ({...t, tipo: 'BP'})), ...listaTC.map(t => ({...t, tipo: 'TC'}))];
+            document.getElementById('qtdTerminais').innerText = terminais.length;
+            document.getElementById('qtdTerminaisCard').innerText = terminais.length;
+            const container = document.getElementById('listaTerminais');
+            if (terminais.length === 0) {
+                container.innerHTML = '<div class="text-center text-gray-400 py-4 text-sm">Aguardando conexões...</div>';
+                return;
+            }
+            container.innerHTML = terminais.map(t => {
+                const isTC = t.tipo === 'TC';
+                return `
+                <div class="flex items-center justify-between p-3 bg-gray-50 border border-gray-100 rounded-lg shadow-sm">
+                    <div class="flex items-center gap-3">
+                        <i class="fa-solid ${isTC ? 'fa-tablet-screen-button text-blue-500' : 'fa-desktop text-blue-400'} text-lg"></i>
+                        <div>
+                            <div class="font-bold text-sm text-gray-700">${t.modelo} <span class="font-mono text-xs font-normal text-gray-500 ml-1">(${t.ip})</span></div>
+                            <div class="text-xs text-gray-500">Conectado às ${t.conectadoEm}</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="abrirModalDebug('${t.ip}')" class="text-xs bg-gray-800 text-gray-100 px-2.5 py-1.5 rounded-md hover:bg-gray-700 transition-colors font-semibold" title="Debug">
+                            <i class="fa-solid fa-terminal"></i>
+                        </button>
+                        <button onclick="abrirModalMidia('${t.ip}', '${t.tipo}')" class="text-xs bg-blue-100 text-blue-700 px-2.5 py-1.5 rounded-md hover:bg-blue-200 transition-colors font-semibold" title="Mídias">
+                            <i class="fa-solid fa-photo-film"></i>
+                        </button>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        socket.on('atualizarTerminaisBP', (terminais) => { listaBP = terminais; renderizarTerminais(); });
+        socket.on('atualizarTerminaisTC', (terminais) => { listaTC = terminais; renderizarTerminais(); });
+
+        async function imprimirEtiqueta(codigo) {
+            if (!codigo || codigo === '-') return alert('Código inválido para impressão.');
+            try {
+                const res = await fetch('https://www.suaapi.net/api/imprimir-preco', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ codigo })
+                });
+                if (res.ok) alert(`Etiqueta do código ${codigo} impressa com sucesso!`);
+                else alert(`Erro na API de impressão. Status: ${res.status}`);
+            } catch (e) {
+                console.error('Erro na impressão:', e);
+                alert('Erro de conexão ao tentar imprimir a etiqueta.');
+            }
+        }
+
+        function mudarAbaMain(aba) {
+            document.getElementById('tabMain_leituras').classList.add('hidden');
+            document.getElementById('tabMain_ranking').classList.add('hidden');
+            document.getElementById('tabMainBtn_leituras').className = "flex-1 py-3.5 font-bold border-b-2 border-transparent text-gray-500 hover:text-blue-600 transition-colors flex justify-center items-center gap-2";
+            document.getElementById('tabMainBtn_ranking').className = "flex-1 py-3.5 font-bold border-b-2 border-transparent text-gray-500 hover:text-blue-600 transition-colors flex justify-center items-center gap-2";
+            document.getElementById(`tabMain_${aba}`).classList.remove('hidden');
+            document.getElementById(`tabMainBtn_${aba}`).classList.replace('border-transparent', 'border-blue-600');
+            document.getElementById(`tabMainBtn_${aba}`).classList.replace('text-gray-500', 'text-blue-700');
+        }
+
+        function abrirModalDebug(ip) {
+            ipDebugAtual = ip;
+            document.getElementById('ipModalDebug').innerText = ip;
+            document.getElementById('modalDebug').classList.remove('hidden');
+            renderizarLogsDebug();
+        }
+
+        function fecharModalDebug() { document.getElementById('modalDebug').classList.add('hidden'); ipDebugAtual = null; }
+
+        function renderizarLogsDebug() {
+            const container = document.getElementById('debugLogsContainer');
+            const logs = logsPorIP[ipDebugAtual] || [];
+            if (logs.length === 0) {
+                container.innerHTML = `<div id="placeholderDebug" class="text-gray-600 italic text-center mt-4">Aguardando comandos...</div>`;
+                return;
+            }
+            container.innerHTML = logs.map(log => `<div class="border-b border-gray-800 pb-1 mb-1 break-all"><span class="text-blue-400">[${log.hora}]</span> <span class="text-emerald-300">➜</span> <span class="text-gray-100">${log.msg.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</span></div>`).join('');
+        }
+
+        socket.on('logDebug', (data) => {
+            if (!logsPorIP[data.ip]) logsPorIP[data.ip] = [];
+            logsPorIP[data.ip].unshift({ hora: new Date().toLocaleTimeString('pt-BR'), msg: data.msg });
+            if (logsPorIP[data.ip].length > 50) logsPorIP[data.ip].pop();
+            if (ipDebugAtual === data.ip) renderizarLogsDebug();
+        });
+
+        let arquivosNaMemoria = [];
+        let playlistAtual = [];
+
+        function mudarAba(aba) {
+            document.getElementById('tab_arquivos').classList.add('hidden');
+            document.getElementById('tab_playlist').classList.add('hidden');
+            document.getElementById('tabBtn_arquivos').className = "flex-1 py-3.5 font-bold border-b-2 border-transparent text-gray-500 hover:text-blue-600 transition-colors flex justify-center items-center gap-2";
+            document.getElementById('tabBtn_playlist').className = "flex-1 py-3.5 font-bold border-b-2 border-transparent text-gray-500 hover:text-blue-600 transition-colors flex justify-center items-center gap-2";
+            document.getElementById(`tab_${aba}`).classList.remove('hidden');
+            document.getElementById(`tabBtn_${aba}`).className = "flex-1 py-3.5 font-bold border-b-2 border-blue-600 text-blue-700 transition-colors flex justify-center items-center gap-2";
+        }
+
+        function abrirModalMidia(ip, tipo) {
+            ipAlvo = ip; tipoTerminalAlvo = tipo;
+            document.getElementById('ipModalMidia').innerText = ip;
+            document.getElementById('tipoModalMidia').innerText = tipo;
+            const infoRes = document.getElementById('infoResolucao');
+            if (tipo === 'BP') infoRes.innerText = "Resolução ideal: 320x240px | Max: 45KB (.jpg, .bmp)";
+            else infoRes.innerText = "Resolução ideal: 480x272px | Max: 1MB (Imagens/Vídeos)";
+            document.getElementById('containerListaArquivos').innerHTML = '<div class="text-center text-gray-400 py-8 text-sm">Clique em "Ler Memória" para visualizar.</div>';
+            document.getElementById('previewMidiaContainer').classList.add('hidden');
+            mudarAba('arquivos');
+            document.getElementById('modalMidia').classList.remove('hidden');
+        }
+
+        function fecharModalMidia() { document.getElementById('modalMidia').classList.add('hidden'); }
+
+        function msg(texto, cor) {
+            const s = document.getElementById('statusMidia');
+            s.innerText = texto; s.className = `absolute top-0 left-0 right-0 text-sm text-center font-bold py-2 bg-${cor}-100 text-${cor}-800 z-10 shadow-sm border-b border-${cor}-200`;
+            s.classList.remove('hidden'); setTimeout(() => s.classList.add('hidden'), 3500);
+        }
+
+        function buscarListaMidias() {
+            msg('Lendo memória...', 'blue');
+            if (tipoTerminalAlvo === 'TC') socket.emit('listarMidias', { ip: ipAlvo });
+            else socket.emit('listarMidiasBP', { ip: ipAlvo });
+        }
+
+        function uploadArquivo(input) {
+            const file = input.files[0]; if (!file) return;
+            const ext = file.name.split('.').pop().toLowerCase(); const sizeKB = file.size / 1024;
+            if (tipoTerminalAlvo === 'BP') {
+                if (!['jpg', 'bmp'].includes(ext)) { alert('Formato inválido. Use .jpg ou .bmp.'); input.value = ''; return; }
+                if (sizeKB > 45) { alert(`Excede 45KB (${sizeKB.toFixed(1)}KB).`); input.value = ''; return; }
+            } else {
+                const permitidos = ['avi', 'bmp', 'jpeg', 'jpg', 'gif', 'png', 'tif', 'tiff'];
+                if (!permitidos.includes(ext)) { alert('Formato não suportado.'); input.value = ''; return; }
+                if (sizeKB > 1024) { alert(`Excede 1MB (${(sizeKB/1024).toFixed(2)}MB).`); input.value = ''; return; }
+            }
+            const reader = new FileReader();
+            reader.onload = () => {
+                const data = { ip: ipAlvo, nomeArquivo: "INT_MEM/" + file.name, base64: reader.result.split(',')[1] };
+                if (tipoTerminalAlvo === 'TC') socket.emit('uploadMidia', data);
+                else socket.emit('uploadMidiaBP', data);
+                msg('Enviando para o terminal...', 'blue'); input.value = '';
+            }; reader.readAsDataURL(file);
+        }
+
+        function deletarArquivo(nomeArquivo) {
+            if (confirm(`Deseja apagar "${nomeArquivo}"?`)) {
+                msg('Solicitando exclusão...', 'blue');
+                const data = { ip: ipAlvo, nomeArquivo: nomeArquivo };
+                if (tipoTerminalAlvo === 'TC') socket.emit('apagarMidia', data);
+                else socket.emit('apagarMidiaBP', data);
+            }
+        }
+
+        socket.on('statusUpload', (d) => { msg(d.mensagem, d.sucesso ? 'emerald' : 'red'); if(d.sucesso) buscarListaMidias(); });
+
+        function renderizarListaArquivos(files) {
+            arquivosNaMemoria = [...new Set(files)];
+            document.getElementById('containerListaArquivos').innerHTML = arquivosNaMemoria.map(f => `
+                <div class="flex items-center justify-between p-2.5 bg-white border border-gray-200 rounded-md shadow-sm hover:border-blue-300 transition-colors">
+                    <span class="truncate mr-2 font-mono text-sm text-gray-700"><i class="fa-regular ${f.includes('.conf') ? 'fa-file-lines' : 'fa-file-image'} text-blue-400 mr-2"></i>${f}</span>
+                    <div class="flex gap-1">
+                        <button onclick="socket.emit('${tipoTerminalAlvo === 'TC' ? 'solicitarMidia' : 'solicitarMidiaBP'}',{ip:ipAlvo,nomeArquivo:'${f}'})" class="bg-blue-50 text-blue-700 px-3 py-1 rounded border border-blue-200 text-xs font-semibold">Ver</button>
+                        <button onclick="deletarArquivo('${f}')" class="bg-red-50 text-red-600 px-3 py-1 rounded border border-red-200 text-xs hover:bg-red-600 hover:text-white transition-colors"><i class="fa-solid fa-trash-can"></i></button>
+                    </div>
+                </div>`).join('');
+            atualizarSelectNovaMidia();
+        }
+
+        socket.on('retornoListaMidias', (data) => { if(data.ip === ipAlvo && tipoTerminalAlvo === 'TC') { msg('Memória lida!', 'emerald'); renderizarListaArquivos(data.conteudo.match(/[a-zA-Z0-9_/\-\\]+\.(jpg|jpeg|png|bmp|gif|mp4|avi|conf)/gi) || []); } });
+        socket.on('retornoListaMidiasBP', (data) => { if(data.ip === ipAlvo && tipoTerminalAlvo === 'BP') { msg('Memória lida!', 'emerald'); arquivosNaMemoria = []; renderizarListaArquivos(data.conteudo.match(/[a-zA-Z0-9_/\-\\]+\.(jpg|jpeg|png|bmp|gif|mp4|avi|conf)/gi) || []); } });
+
+        socket.on('retornoMidia', (data) => {
+            if(data.ip !== ipAlvo) return;
+            document.getElementById('nomePreview').innerText = data.nome;
+            const ext = data.nome.split('.').pop().toLowerCase(); const mediaRender = document.getElementById('mediaRender');
+            if (['mp4', 'avi', 'mov'].includes(ext)) mediaRender.innerHTML = `<video controls autoplay class="max-w-full max-h-[250px] rounded shadow-sm"><source src="data:video/${ext==='mp4'?'mp4':'x-msvideo'};base64,${data.base64}"></video>`;
+            else mediaRender.innerHTML = `<img src="data:image/${ext==='png'?'png':(ext==='gif'?'gif':(ext==='bmp'?'bmp':'jpeg'))};base64,${data.base64}" class="max-w-full max-h-[250px] object-contain rounded shadow-sm">`;
+            document.getElementById('previewMidiaContainer').classList.remove('hidden');
+        });
+
+        function buscarPlaylist() {
+            msg('Buscando playlist...', 'blue');
+            if (tipoTerminalAlvo === 'TC') socket.emit('solicitarMidia', { ip: ipAlvo, nomeArquivo: 'CONF_DIR/medias.conf' });
+            else socket.emit('buscarPlaylistBP', { ip: ipAlvo });
+        }
+
+        socket.on('retornoPlaylistBP', (data) => { if(data.ip === ipAlvo && tipoTerminalAlvo === 'BP') { msg('Playlist carregada!', 'emerald'); parsePlaylistString(data.conteudo); } });
+        socket.on('retornoPlaylistTC', (data) => { if(data.ip === ipAlvo && tipoTerminalAlvo === 'TC') { msg('Playlist carregada!', 'emerald'); parsePlaylistString(data.conteudo); } });
+
+        function parsePlaylistString(txt) {
+            playlistAtual = [];
+            txt.split('\n').forEach(l => { if(l.trim().startsWith('|')) { const p = l.trim().split('|'); if(p.length >= 4) playlistAtual.push({ path: p[1], time: p[2] }); } });
+            renderizarPlaylist();
+        }
+
+        function renderizarPlaylist() {
+            const container = document.getElementById('containerPlaylist');
+            if (playlistAtual.length === 0) { container.innerHTML = '<div class="p-8 text-center text-sm text-gray-400">Vazia.</div>'; return; }
+            container.innerHTML = playlistAtual.map((item, idx) => `
+                <div class="p-2 grid grid-cols-12 gap-2 items-center bg-white border-b border-gray-50">
+                    <div class="col-span-2 flex gap-1"><button onclick="moverItem(${idx}, -1)" class="p-1 rounded bg-gray-50 border"><i class="fa-solid fa-chevron-up text-[10px]"></i></button><button onclick="moverItem(${idx}, 1)" class="p-1 rounded bg-gray-50 border"><i class="fa-solid fa-chevron-down text-[10px]"></i></button></div>
+                    <div class="col-span-6 font-mono text-xs truncate">${item.path}</div>
+                    <div class="col-span-3"><input type="number" id="time_${idx}" value="${item.time}" class="w-full border rounded text-center text-xs py-1"></div>
+                    <div class="col-span-1"><button onclick="removerDaPlaylist(${idx})" class="text-red-400"><i class="fa-solid fa-trash-can"></i></button></div>
+                </div>`).join('');
+        }
+
+        function moverItem(idx, dir) { atualizarTempos(); const n = idx + dir; if (n >= 0 && n < playlistAtual.length) { [playlistAtual[idx], playlistAtual[n]] = [playlistAtual[n], playlistAtual[idx]]; renderizarPlaylist(); } }
+        function adicionarNaPlaylist() { const path = document.getElementById('selectNovaMidia').value; if (!path) return; atualizarTempos(); playlistAtual.push({ path: path, time: "5" }); renderizarPlaylist(); }
+        function removerDaPlaylist(idx) { atualizarTempos(); playlistAtual.splice(idx, 1); renderizarPlaylist(); }
+        function atualizarTempos() { playlistAtual.forEach((item, idx) => { const input = document.getElementById(`time_${idx}`); if(input) item.time = input.value; }); }
+
+        function salvarPlaylist() {
+            atualizarTempos(); let conf = "<\n"; playlistAtual.forEach(i => { conf += `|${i.path}|${i.time}|1|\n`; }); conf += ">"; msg('Gravando...', 'blue');
+            if (tipoTerminalAlvo === 'TC') socket.emit('uploadMidia', { ip: ipAlvo, nomeArquivo: 'CONF_DIR/medias.conf', base64: btoa(unescape(encodeURIComponent(conf))) });
+            else socket.emit('salvarPlaylistBP', { ip: ipAlvo, conteudo: conf });
+        }
+
+        function atualizarSelectNovaMidia() {
+            document.getElementById('selectNovaMidia').innerHTML = '<option value="">Selecione uma mídia...</option>' + arquivosNaMemoria.filter(f => !f.includes('.conf')).map(f => `<option value="${f}">${f}</option>`).join('');
+        }
+
+        function limparHistorico() { if (confirm("Limpar histórico?")) socket.emit('limparHistorico'); }
+
+        function renderizarLeitura(leitura, animar = false) {
+            const linhaVazia = document.getElementById('linhaVazia');
+            if (linhaVazia) linhaVazia.remove();
+            const isErro = leitura.status === 'erro' || leitura.nome === '❌ NÃO ENCONTRADO';
+            const corNome = isErro ? 'text-red-600 font-bold' : 'text-gray-900 font-medium';
+            const corPreco = isErro ? 'text-gray-400' : 'text-emerald-600 font-semibold';
+            const tr = document.createElement('tr');
+            tr.className = `hover:bg-blue-50 transition-colors ${animar ? 'bg-emerald-50' : ''}`;
+            tr.innerHTML = `
+                <td class="px-4 py-4 text-xs text-gray-500">${leitura.hora}</td>
+                <td class="px-4 py-4 font-mono text-xs text-blue-600">${leitura.terminal}</td>
+                <td class="px-4 py-4 font-mono text-gray-600">${leitura.codigo}</td>
+                <td class="px-4 py-4 ${corNome}">${leitura.nome}</td>
+                <td class="px-4 py-4 ${corPreco}">${leitura.preco}</td>
+                <td class="px-4 py-4 text-center">
+                    <button onclick="imprimirEtiqueta('${leitura.codigo}')" class="bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-2 rounded text-xs font-semibold transition-colors" title="Imprimir Etiqueta">
+                        <i class="fa-solid fa-print"></i>
+                    </button>
+                </td>`;
+            document.getElementById('tabelaLeituras').insertBefore(tr, document.getElementById('tabelaLeituras').firstChild);
+            if (animar) setTimeout(() => tr.classList.remove('bg-emerald-50'), 1500);
+        }
+
+        function calcularRanking() {
+            const contagem = {};
+            historicoCompleto.forEach(l => {
+                if (!contagem[l.codigo]) contagem[l.codigo] = { codigo: l.codigo, nome: l.nome, preco: l.preco, qtd: 0, erro: (l.status === 'erro' || l.nome === '❌ NÃO ENCONTRADO') };
+                contagem[l.codigo].qtd++;
+                if (contagem[l.codigo].erro && l.status === 'ok') { contagem[l.codigo].nome = l.nome; contagem[l.codigo].preco = l.preco; contagem[l.codigo].erro = false; }
+            });
+            const ranking = Object.values(contagem).sort((a, b) => b.qtd - a.qtd);
+            const tbody = document.getElementById('tabelaRanking');
+            if (ranking.length === 0) { tbody.innerHTML = '<tr><td colspan="6" class="text-center py-12 text-gray-400">Nenhum dado para o ranking.</td></tr>'; return; }
+            tbody.innerHTML = ranking.map((item, index) => {
+                const corNome = item.erro ? 'text-red-600 font-bold' : 'text-gray-900 font-medium';
+                return `
+                <tr class="hover:bg-gray-50 border-b border-gray-50">
+                    <td class="px-4 py-4 text-center font-bold text-gray-400">#${index + 1}</td>
+                    <td class="px-4 py-4 font-mono text-gray-600">${item.codigo}</td>
+                    <td class="px-4 py-4 ${corNome}">${item.nome}</td>
+                    <td class="px-4 py-4 font-semibold text-emerald-600">${item.preco !== '-' ? item.preco : ''}</td>
+                    <td class="px-4 py-4 text-center font-bold text-blue-600">${item.qtd}x</td>
+                    <td class="px-4 py-4 text-center">
+                        <button onclick="imprimirEtiqueta('${item.codigo}')" class="bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-2 rounded text-xs font-semibold transition-colors" title="Imprimir Etiqueta">
+                            <i class="fa-solid fa-print"></i>
+                        </button>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        socket.on('historicoLeituras', (h) => {
+            historicoCompleto = [...h].reverse();
+            document.getElementById('tabelaLeituras').innerHTML = historicoCompleto.length ? '' : '<tr id="linhaVazia"><td colspan="6" class="text-center py-12 text-gray-400">Nenhuma leitura registrada.</td></tr>';
+            historicoCompleto.forEach(l => renderizarLeitura(l, false));
+            calcularRanking();
+        });
+
+        socket.on('novaLeitura', (l) => {
+            historicoCompleto.push(l);
+            if (historicoCompleto.length > 200) historicoCompleto.shift();
+            renderizarLeitura(l, true);
+            calcularRanking();
+        });
+
+        // ── Config ──────────────────────────────────────────────────────────
+        async function abrirModalConfig() {
+            document.getElementById('msgConfig').classList.add('hidden');
+            try {
+                const res = await fetch('/api/config');
+                const data = await res.json();
+                document.getElementById('inputPortaBP').value = data.PORT_BP;
+                document.getElementById('inputPortaTC').value = data.PORT_TC;
+            } catch (e) {
+                document.getElementById('inputPortaBP').value = 6500;
+                document.getElementById('inputPortaTC').value = 16510;
+            }
+            document.getElementById('modalConfig').classList.remove('hidden');
+        }
+
+        function fecharModalConfig() { document.getElementById('modalConfig').classList.add('hidden'); }
+
+        async function salvarConfig() {
+            const btn = document.getElementById('btnSalvarConfig');
+            const msgEl = document.getElementById('msgConfig');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Salvando...';
+            try {
+                const res = await fetch('/api/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        PORT_BP: document.getElementById('inputPortaBP').value,
+                        PORT_TC: document.getElementById('inputPortaTC').value
+                    })
+                });
+                const data = await res.json();
+                msgEl.className = 'text-xs font-semibold text-center py-2 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200';
+                msgEl.innerText = 'Salvo! Reinicie o servidor para aplicar.';
+                msgEl.classList.remove('hidden');
+            } catch (e) {
+                msgEl.className = 'text-xs font-semibold text-center py-2 rounded-lg bg-red-50 text-red-700 border border-red-200';
+                msgEl.innerText = 'Erro ao salvar configurações.';
+                msgEl.classList.remove('hidden');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Salvar Configurações';
+            }
+        }
+    </script>
+</body>
+</html>

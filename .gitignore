@@ -1,0 +1,20 @@
+# Node
+node_modules/
+
+#env
+.env
+restart-gertec.ps1
+nssm.exe
+
+# Arquivo específico
+data/temp/bdTempLeitura.json
+
+
+# Pastas
+logs/
+certs/
+src/
+
+# Arquivos específicos
+public/web.config
+public/res/logo_md.png
