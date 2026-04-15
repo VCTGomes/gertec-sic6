@@ -49,7 +49,7 @@ PORT=3102
 IMPRESSORA_URL=URL_DA_API_DE_IMPRESSAO
 </code></pre>
 
-<p>Caso utilize a API de impressão, ajuste também o endpoint:</p>
+<p>Caso utilize a API de impressão, ajuste também o endpoint e não se esqueça de modificar no HTML:</p>
 
 <pre><code>/api/v1/imprimir/preco</code></pre>
 
@@ -68,6 +68,6 @@ IMPRESSORA_URL=URL_DA_API_DE_IMPRESSAO
   <li>Não há qualquer vínculo com o SIC6 ou SICNET.</li>
   <li>Antes de utilizar qualquer software, verifique a procedência.</li>
   <li>Recomenda-se utilizar um usuário de banco com permissão apenas de leitura.</li>
-  <li>O uso da ferramenta é de responsabilidade do usuário.</li>
-  <li>Você pode modificar o projeto livremente, mas lembre-se de referenciar o autor.</li>
+  <li>O uso da ferramenta é de responsabilidade do usuário. Cuidado com o que você conecta ao seu SQL.</li>
+  <li>Você pode modificar o projeto livremente, mas lembre-se de nos referneciar :D</li>
 </ul>
