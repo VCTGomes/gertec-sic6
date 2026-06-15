@@ -1,0 +1,6 @@
+# Segredos e estado de runtime — NUNCA versionar
+.env
+certs/
+data/
+logs/
+node_modules/

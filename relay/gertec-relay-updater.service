@@ -1,0 +1,15 @@
+[Unit]
+Description=GERTEC Relay Self-Updater (GitHub webhook)
+After=network.target
+
+[Service]
+Type=simple
+User=gertec
+WorkingDirectory=/opt/gertec-relay
+ExecStart=/usr/bin/node updater.js
+EnvironmentFile=/opt/gertec-relay/.env
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
