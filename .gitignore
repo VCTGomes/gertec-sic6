@@ -26,4 +26,4 @@ data/config.json
 data/push/keys.json
 
 # Histórico de impressão
-data/bdImpressos.json
+data/temp/bdImpressos.json
