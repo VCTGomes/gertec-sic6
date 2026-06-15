@@ -22,6 +22,13 @@
         html { background-color: #1d4ed8; }
         body { background-color: #f3f4f6; font-family: 'Inter', sans-serif; }
         header.wco-header { background-color: #1d4ed8 !important; }
+        @media (min-width: 1024px) {
+            .sidebar-terminais {
+                position: sticky;
+                top: 1.5rem;
+                align-self: start;
+            }
+        }
     </style>
 
     <!-- Notificações Push (Firebase Cloud Messaging) -->
@@ -40,10 +47,10 @@
         self.FIREBASE_VAPID_KEY = "BBAIdufRFOwFneK7ynebpnPBepFuBB-82CWBAHRM4NueAnt4u3t4WDGp5S8WG8FOZeq2NgGtVzoMDrDNGD-NWzU";
     </script>
 </head>
-<body class="bg-gray-50 text-gray-800 font-sans antialiased min-h-screen flex flex-col">
+<body class="bg-gray-50 text-gray-800 font-sans antialiased overflow-hidden flex flex-col" style="height:100vh">
 
-    <header class="bg-blue-700 text-white shadow-md sticky top-0 z-10 flex flex-col w-full wco-header">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center w-full">
+    <header class="bg-blue-700 text-white shadow-md sticky top-0 z-40 wco-header">
+        <div class="wco-header-inner max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center w-full">
             <div class="flex items-center gap-3">
                 <a href="/" class="hidden wco-no-drag bg-blue-800 hover:bg-blue-600 transition-colors p-2 rounded-lg shadow-inner flex items-center justify-center" title="Voltar para a Home">
                     <i class="fa-solid fa-house text-sm text-blue-200"></i>
@@ -62,8 +69,9 @@
         </div>
     </header>
 
-    <main class="flex-grow max-w-7xl mx-auto p-4 sm:p-6 w-full grid grid-cols-1 lg:grid-cols-[420px_minmax(0,1fr)] gap-6 items-start">
-        <div class="flex flex-col gap-4">
+    <div class="flex-grow overflow-y-auto w-full" style="min-height:0">
+    <main class="max-w-7xl mx-auto p-4 sm:p-6 w-full grid grid-cols-1 lg:grid-cols-[420px_minmax(0,1fr)] gap-6 items-start">
+        <div class="flex flex-col gap-4 sidebar-terminais">
             <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 w-full">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="font-semibold text-gray-700 flex items-center gap-2">
@@ -176,6 +184,7 @@
             </div>
         </div>
     </main>
+    </div>
 
     <!-- Modal Mídias -->
     <div id="modalMidia" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-opacity">
