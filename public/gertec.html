@@ -9,6 +9,7 @@
     <link href="/assets/css/all.min.css" rel="stylesheet">
 
     <link rel="stylesheet" href="/assets/css/header.css">
+    <link rel="stylesheet" href="/assets/css/term-icons.css">
 
     <link rel="icon" type="image/x-icon" href="/res/icons/favicon.ico">
     <meta name="theme-color" content="#1d4ed8">
@@ -310,7 +311,7 @@
                 return `
                 <div class="flex items-center justify-between p-3 bg-gray-50 border border-gray-100 rounded-lg shadow-sm">
                     <div class="flex items-center gap-3">
-                        <i class="fa-solid ${isTC ? 'fa-tablet-screen-button text-blue-500' : 'fa-desktop text-blue-400'} text-lg"></i>
+                        <span class="term-icon ${isTC ? 'term-icon--tc506' : 'term-icon--buscapreco'} text-blue-500 text-lg"></span>
                         <div>
                             <div class="font-bold text-sm text-gray-700">
                                 <span ${spanAttrs}>${nomeExibido}</span>
@@ -576,11 +577,18 @@
 
         function limparHistorico() { if (confirm("Limpar histórico?")) socket.emit('limparHistorico'); }
 
+        function iconeTerminalHist(leitura) {
+            const isTC = /TC-?506/i.test(leitura.terminal || '');
+            const cls = isTC ? 'term-icon--tc506' : 'term-icon--buscapreco';
+            return `<span class="term-icon ${cls} mr-1.5 align-text-bottom"></span>`;
+        }
+
         function nomeTerminalHist(leitura) {
+            const icone = iconeTerminalHist(leitura);
             const ap = leitura.serial ? apelidos[leitura.serial] : null;
-            if (!ap) return leitura.terminal;
+            if (!ap) return `${icone}${leitura.terminal}`;
             const m = leitura.terminal.match(/\(([^)]+)\)/);
-            return `${ap} <span class="text-gray-400 font-normal">(${m ? m[1] : ''})</span>`;
+            return `${icone}${ap} <span class="text-gray-400 font-normal">(${m ? m[1] : ''})</span>`;
         }
 
         function recarregarHistorico() {
