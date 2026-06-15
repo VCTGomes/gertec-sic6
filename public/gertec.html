@@ -116,6 +116,7 @@
                         </tbody>
                     </table>
                 </div>
+                <div id="pagLeiturasBar"></div>
             </div>
 
             <div id="tabMain_ranking" class="hidden flex-col">
@@ -139,6 +140,7 @@
                         </tbody>
                     </table>
                 </div>
+                <div id="pagRankingBar"></div>
             </div>
 
             <div id="tabMain_leitores" class="hidden flex-col">
@@ -169,6 +171,7 @@
                             <tbody id="tabelaLeitorRanking" class="divide-y divide-gray-100"></tbody>
                         </table>
                     </div>
+                    <div id="pagLeitorBar"></div>
                 </div>
             </div>
         </div>
@@ -436,7 +439,16 @@
             }
         }
 
-        function mudarAbaMain(aba) {
+        // ── Abas ↔ URL (query string: ?recentes, ?maisbuscados, ?leitoresusados) ──
+        const ABA_PARAM = { leituras: 'recentes', ranking: 'maisbuscados', leitores: 'leitoresusados' };
+        const PARAM_ABA = { recentes: 'leituras', maisbuscados: 'ranking', leitoresusados: 'leitores' };
+
+        function abaDaURL() {
+            const q = (location.search || '').replace(/^\?/, '').split(/[&=]/)[0].toLowerCase();
+            return PARAM_ABA[q] || 'leituras';
+        }
+
+        function mudarAbaMain(aba, atualizarURL = true) {
             ['leituras', 'ranking', 'leitores'].forEach(a => {
                 document.getElementById(`tabMain_${a}`).classList.add('hidden');
                 document.getElementById(`tabMainBtn_${a}`).className = "flex-1 py-3.5 font-bold border-b-2 border-transparent text-gray-500 hover:text-blue-600 transition-colors flex justify-center items-center gap-2";
@@ -444,7 +456,12 @@
             document.getElementById(`tabMain_${aba}`).classList.remove('hidden');
             document.getElementById(`tabMainBtn_${aba}`).classList.replace('border-transparent', 'border-blue-600');
             document.getElementById(`tabMainBtn_${aba}`).classList.replace('text-gray-500', 'text-blue-700');
+            if (atualizarURL) history.pushState({ aba }, '', '?' + (ABA_PARAM[aba] || 'recentes'));
         }
+
+        window.addEventListener('popstate', (e) => {
+            mudarAbaMain((e.state && e.state.aba) || abaDaURL(), false);
+        });
 
         function abrirModalDebug(ip) {
             ipDebugAtual = ip;
@@ -627,45 +644,93 @@
 
         function nomeTerminalHist(leitura) {
             const icone = iconeTerminalHist(leitura);
+            const m = (leitura.terminal || '').match(/\(([^)]+)\)/);
+            const ip = m ? m[1] : '';
             const ap = leitura.serial ? apelidos[leitura.serial] : null;
-            if (!ap) return `${icone}${leitura.terminal}`;
-            const m = leitura.terminal.match(/\(([^)]+)\)/);
-            return `${icone}${ap} <span class="text-gray-400 font-normal">(${m ? m[1] : ''})</span>`;
+            const nome = ap || (leitura.terminal || '').replace(/\s*\([^)]*\)\s*$/, '').trim() || (leitura.terminal || '');
+            const linhaIp = ip ? `<span class="text-gray-400 font-normal" style="display:block;line-height:1.2;">(${ip})</span>` : '';
+            return `${icone}${nome}${linhaIp}`;
         }
 
+        // ── Paginação (compartilhada pelas três tabelas) ────────────────────
+        const TAM_PAGINA = 12;
+        let pagLeituras = 1, pagRanking = 1, pagLeitor = 1;
+
+        function totalPaginas(n) { return Math.max(1, Math.ceil(n / TAM_PAGINA)); }
+
+        // Linhas vazias para manter a altura da tabela constante entre páginas.
+        function linhasPreenchimento(qtd) {
+            return qtd > 0 ? '<tr style="height:3.5rem;"><td colspan="6"></td></tr>'.repeat(qtd) : '';
+        }
+
+        // Renderiza a barra de navegação; fnNome é o nome global da função de ir-para-página.
+        function renderPaginacao(containerId, pag, total, fnNome) {
+            const el = document.getElementById(containerId);
+            if (!el) return;
+            if (total <= TAM_PAGINA) { el.innerHTML = ''; return; }
+            const tp = totalPaginas(total);
+            const ini = (pag - 1) * TAM_PAGINA;
+            const estilo = 'padding:.375rem .75rem;border:1px solid #e5e7eb;border-radius:.375rem;background:#fff;color:#374151;font-size:.75rem;font-weight:600;';
+            const btn = (destino, habilitado, icone) =>
+                `<button ${habilitado ? `onclick="${fnNome}(${destino})"` : 'disabled'} style="${estilo}${habilitado ? 'cursor:pointer;' : 'opacity:.4;cursor:not-allowed;'}"><i class="fa-solid ${icone}"></i></button>`;
+            el.innerHTML = `
+                <div class="flex items-center justify-between gap-3 px-4 sm:px-6 py-3 border-t border-gray-100 bg-gray-50">
+                    <span class="text-xs text-gray-500">${ini + 1}–${Math.min(ini + TAM_PAGINA, total)} de ${total} • página ${pag}/${tp}</span>
+                    <div class="flex items-center gap-2">
+                        ${btn(pag - 1, pag > 1, 'fa-chevron-left')}
+                        ${btn(pag + 1, pag < tp, 'fa-chevron-right')}
+                    </div>
+                </div>`;
+        }
+
+        function irLeituras(p) { pagLeituras = p; renderizarLeituras(false); }
+        function irRanking(p)  { pagRanking = p;  calcularRanking(); }
+        function irLeitor(p)   { pagLeitor = p;   renderizarRankingLeitor(); }
+
         function recarregarHistorico() {
+            renderizarLeituras(false);
+            calcularLeitores();
+        }
+
+        function linhaLeitura(leitura) {
+            const isErro = leitura.status === 'erro' || leitura.nome === '❌ NÃO ENCONTRADO';
+            const corNome = isErro ? 'text-red-600 font-bold' : 'text-gray-900 font-medium';
+            const corPreco = isErro ? 'text-gray-400' : 'text-emerald-600 font-semibold';
+            return `
+                <tr class="hover:bg-blue-50 transition-colors" style="height:3.5rem;">
+                    <td class="px-4 py-4 text-xs text-gray-500">${leitura.hora}</td>
+                    <td class="px-4 py-4 font-mono text-xs text-blue-600">${nomeTerminalHist(leitura)}</td>
+                    <td class="px-4 py-4 font-mono text-gray-600" style="font-size:0.68rem;">${leitura.codigo}</td>
+                    <td class="px-4 py-4 ${corNome}">${leitura.nome}</td>
+                    <td class="px-4 py-4 text-xs ${corPreco}">${leitura.preco}</td>
+                    <td class="px-4 py-4 text-center">
+                        <button onclick="imprimirEtiqueta('${leitura.codigo}')" class="bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-2 rounded text-xs font-semibold transition-colors" title="Imprimir Etiqueta">
+                            <i class="fa-solid fa-print"></i>
+                        </button>
+                    </td>
+                </tr>`;
+        }
+
+        // animarTopo: realça a 1ª linha (leitura recém-chegada) quando na página 1.
+        function renderizarLeituras(animarTopo = false) {
             const tbody = document.getElementById('tabelaLeituras');
             if (!tbody) return;
             if (!historicoCompleto.length) {
                 tbody.innerHTML = '<tr id="linhaVazia"><td colspan="6" class="text-center py-12 text-gray-400">Nenhuma leitura registrada.</td></tr>';
+                renderPaginacao('pagLeiturasBar', 1, 0, 'irLeituras');
                 return;
             }
-            tbody.innerHTML = '';
-            historicoCompleto.forEach(l => renderizarLeitura(l, false));
-            calcularLeitores();
-        }
-
-        function renderizarLeitura(leitura, animar = false) {
-            const linhaVazia = document.getElementById('linhaVazia');
-            if (linhaVazia) linhaVazia.remove();
-            const isErro = leitura.status === 'erro' || leitura.nome === '❌ NÃO ENCONTRADO';
-            const corNome = isErro ? 'text-red-600 font-bold' : 'text-gray-900 font-medium';
-            const corPreco = isErro ? 'text-gray-400' : 'text-emerald-600 font-semibold';
-            const tr = document.createElement('tr');
-            tr.className = `hover:bg-blue-50 transition-colors ${animar ? 'bg-emerald-50' : ''}`;
-            tr.innerHTML = `
-                <td class="px-4 py-4 text-xs text-gray-500">${leitura.hora}</td>
-                <td class="px-4 py-4 font-mono text-xs text-blue-600">${nomeTerminalHist(leitura)}</td>
-                <td class="px-4 py-4 font-mono text-gray-600">${leitura.codigo}</td>
-                <td class="px-4 py-4 ${corNome}">${leitura.nome}</td>
-                <td class="px-4 py-4 ${corPreco}">${leitura.preco}</td>
-                <td class="px-4 py-4 text-center">
-                    <button onclick="imprimirEtiqueta('${leitura.codigo}')" class="bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-2 rounded text-xs font-semibold transition-colors" title="Imprimir Etiqueta">
-                        <i class="fa-solid fa-print"></i>
-                    </button>
-                </td>`;
-            document.getElementById('tabelaLeituras').insertBefore(tr, document.getElementById('tabelaLeituras').firstChild);
-            if (animar) setTimeout(() => tr.classList.remove('bg-emerald-50'), 1500);
+            const view = [...historicoCompleto].reverse(); // mais recentes primeiro
+            const tp = totalPaginas(view.length);
+            if (pagLeituras > tp) pagLeituras = tp;
+            const ini = (pagLeituras - 1) * TAM_PAGINA;
+            const itens = view.slice(ini, ini + TAM_PAGINA);
+            tbody.innerHTML = itens.map(linhaLeitura).join('') + (view.length > TAM_PAGINA ? linhasPreenchimento(TAM_PAGINA - itens.length) : '');
+            renderPaginacao('pagLeiturasBar', pagLeituras, view.length, 'irLeituras');
+            if (animarTopo && pagLeituras === 1) {
+                const tr = tbody.firstElementChild;
+                if (tr) { tr.classList.add('bg-emerald-50'); setTimeout(() => tr.classList.remove('bg-emerald-50'), 1500); }
+            }
         }
 
         // Agrupa leituras por código de produto, ordenado por nº de acessos (desc).
@@ -682,11 +747,11 @@
         function linhaRankingProduto(item, index) {
             const corNome = item.erro ? 'text-red-600 font-bold' : 'text-gray-900 font-medium';
             return `
-                <tr class="hover:bg-gray-50 border-b border-gray-50">
+                <tr class="hover:bg-gray-50 border-b border-gray-50" style="height:3.5rem;">
                     <td class="px-4 py-4 text-center font-bold text-gray-400">#${index + 1}</td>
-                    <td class="px-4 py-4 font-mono text-gray-600">${item.codigo}</td>
+                    <td class="px-4 py-4 font-mono text-gray-600" style="font-size:0.68rem;">${item.codigo}</td>
                     <td class="px-4 py-4 ${corNome}">${item.nome}</td>
-                    <td class="px-4 py-4 font-semibold text-emerald-600">${item.preco !== '-' ? item.preco : ''}</td>
+                    <td class="px-4 py-4 text-xs font-semibold text-emerald-600">${item.preco !== '-' ? item.preco : ''}</td>
                     <td class="px-4 py-4 text-center font-bold text-blue-600">${item.qtd}x</td>
                     <td class="px-4 py-4 text-center">
                         <button onclick="imprimirEtiqueta('${item.codigo}')" class="bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-2 rounded text-xs font-semibold transition-colors" title="Imprimir Etiqueta">
@@ -699,8 +764,13 @@
         function calcularRanking() {
             const ranking = agruparProdutos(historicoCompleto);
             const tbody = document.getElementById('tabelaRanking');
-            if (ranking.length === 0) { tbody.innerHTML = '<tr><td colspan="6" class="text-center py-12 text-gray-400">Nenhum dado para o ranking.</td></tr>'; return; }
-            tbody.innerHTML = ranking.map(linhaRankingProduto).join('');
+            if (ranking.length === 0) { tbody.innerHTML = '<tr><td colspan="6" class="text-center py-12 text-gray-400">Nenhum dado para o ranking.</td></tr>'; renderPaginacao('pagRankingBar', 1, 0, 'irRanking'); return; }
+            const tp = totalPaginas(ranking.length);
+            if (pagRanking > tp) pagRanking = tp;
+            const ini = (pagRanking - 1) * TAM_PAGINA;
+            const itens = ranking.slice(ini, ini + TAM_PAGINA);
+            tbody.innerHTML = itens.map((item, i) => linhaRankingProduto(item, ini + i)).join('') + (ranking.length > TAM_PAGINA ? linhasPreenchimento(TAM_PAGINA - itens.length) : '');
+            renderPaginacao('pagRankingBar', pagRanking, ranking.length, 'irRanking');
         }
 
         // ── Leitores Mais Usados ────────────────────────────────────────────
@@ -757,6 +827,7 @@
             const item = leitoresAtuais[idx];
             if (!item) return;
             leitorFiltro = (leitorFiltro === item.chave) ? null : item.chave; // alterna
+            pagLeitor = 1; // novo leitor → volta à 1ª página
             calcularLeitores();
         }
 
@@ -766,16 +837,24 @@
             document.getElementById('leitorFiltroNome').innerText = item ? item.nome : '';
             const ranking = agruparProdutos(historicoCompleto.filter(l => chaveLeitor(l) === leitorFiltro));
             const tbody = document.getElementById('tabelaLeitorRanking');
-            tbody.innerHTML = ranking.length
-                ? ranking.map(linhaRankingProduto).join('')
-                : '<tr><td colspan="6" class="text-center py-12 text-gray-400">Nenhuma leitura deste leitor.</td></tr>';
+            if (!ranking.length) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-12 text-gray-400">Nenhuma leitura deste leitor.</td></tr>';
+                renderPaginacao('pagLeitorBar', 1, 0, 'irLeitor');
+                wrap.classList.remove('hidden');
+                return;
+            }
+            const tp = totalPaginas(ranking.length);
+            if (pagLeitor > tp) pagLeitor = tp;
+            const ini = (pagLeitor - 1) * TAM_PAGINA;
+            const itens = ranking.slice(ini, ini + TAM_PAGINA);
+            tbody.innerHTML = itens.map((it, i) => linhaRankingProduto(it, ini + i)).join('') + (ranking.length > TAM_PAGINA ? linhasPreenchimento(TAM_PAGINA - itens.length) : '');
+            renderPaginacao('pagLeitorBar', pagLeitor, ranking.length, 'irLeitor');
             wrap.classList.remove('hidden');
         }
 
         socket.on('historicoLeituras', (h) => {
             historicoCompleto = [...h].reverse();
-            document.getElementById('tabelaLeituras').innerHTML = historicoCompleto.length ? '' : '<tr id="linhaVazia"><td colspan="6" class="text-center py-12 text-gray-400">Nenhuma leitura registrada.</td></tr>';
-            historicoCompleto.forEach(l => renderizarLeitura(l, false));
+            renderizarLeituras(false);
             calcularRanking();
             calcularLeitores();
         });
@@ -783,7 +862,7 @@
         socket.on('novaLeitura', (l) => {
             historicoCompleto.push(l);
             if (historicoCompleto.length > 200) historicoCompleto.shift();
-            renderizarLeitura(l, true);
+            renderizarLeituras(true);
             calcularRanking();
             calcularLeitores();
         });
@@ -914,6 +993,11 @@
                 msgPush('Erro ao testar: ' + e.message, false);
             }
         }
+
+        // Seleciona a aba conforme a URL (?recentes / ?maisbuscados / ?leitoresusados)
+        const abaInicial = abaDaURL();
+        history.replaceState({ aba: abaInicial }, '', '?' + (ABA_PARAM[abaInicial] || 'recentes'));
+        mudarAbaMain(abaInicial, false);
 
         // Carrega os apelidos salvos assim que a página abre
         carregarApelidos();
