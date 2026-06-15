@@ -1000,6 +1000,14 @@
         }
 
         // ── Notificações Push ───────────────────────────────────────────────
+        // Registra o Service Worker assim que a página abre (não só ao ativar push).
+        let swRegistration = null;
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js')
+                .then((reg) => { swRegistration = reg; })
+                .catch((e) => console.warn('Falha ao registrar o Service Worker:', e));
+        }
+
         function msgPush(texto, ok) {
             const el = document.getElementById('msgPush');
             el.className = `text-xs font-semibold text-center py-1.5 rounded-lg ${ok
@@ -1024,7 +1032,7 @@
                 if (permissao !== 'granted') return msgPush('Permissão negada pelo navegador.', false);
 
                 if (!firebase.apps.length) firebase.initializeApp(self.FIREBASE_CONFIG);
-                const reg = await navigator.serviceWorker.register('/sw.js');
+                const reg = swRegistration || await navigator.serviceWorker.register('/sw.js');
                 const messaging = firebase.messaging();
 
                 // Mensagens recebidas com a aba EM FOCO (o SW só trata segundo plano)
