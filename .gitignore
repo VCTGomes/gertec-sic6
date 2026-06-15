@@ -21,3 +21,6 @@ public/res/logo_md.png
 
 # Configurações
 data/config.json
+
+# Notificações Push — tokens dos dispositivos (não versionar)
+data/push/keys.json

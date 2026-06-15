@@ -26,13 +26,14 @@ app.get('/api/config', (req, res) => {
 
 app.post('/api/config', (req, res) => {
     try {
-        const { PORT_BP, PORT_TC, IMPRESSORA_URL } = req.body;
+        const { PORT_BP, PORT_TC, IMPRESSORA_URL, PUSH_BUSCAS_LIMITE } = req.body;
         const atual = lerConfig();
         const nova = {
             ...atual,
             PORT_BP: parseInt(PORT_BP) || atual.PORT_BP,
             PORT_TC: parseInt(PORT_TC) || atual.PORT_TC,
-            IMPRESSORA_URL: IMPRESSORA_URL !== undefined ? String(IMPRESSORA_URL).trim() : atual.IMPRESSORA_URL
+            IMPRESSORA_URL: IMPRESSORA_URL !== undefined ? String(IMPRESSORA_URL).trim() : atual.IMPRESSORA_URL,
+            PUSH_BUSCAS_LIMITE: parseInt(PUSH_BUSCAS_LIMITE) || atual.PUSH_BUSCAS_LIMITE
         };
         fs.mkdirSync(path.dirname(configPath), { recursive: true });
         fs.writeFileSync(configPath, JSON.stringify(nova, null, 2));
@@ -82,6 +83,22 @@ app.post('/api/imprimir-preco', async (req, res) => {
         console.error(`[IMPRESSORA] Erro ao imprimir ${codigo}:`, e.message);
     }
 });
+// ── Notificações Push ─────────────────────────────────────────────────────────
+const push = require('./services/push');
+
+// O navegador/PWA registra aqui o token do FCM após ativar as notificações
+app.post('/api/push/register', (req, res) => {
+    if (!push.registrarToken(req.body && req.body.token)) {
+        return res.status(400).json({ erro: 'token inválido' });
+    }
+    res.json({ ok: true });
+});
+
+// Dispara uma notificação de teste para todos os dispositivos registrados
+app.post('/api/push/test', async (req, res) => {
+    res.json(await push.notificar('GERTEC — Teste', 'Notificações funcionando! 🎉'));
+});
+
 // ── Serviços TCP ─────────────────────────────────────────────────────────────
 require('./services/gertecBPServer')(io);
 require('./services/gertecTC506Server')(io);

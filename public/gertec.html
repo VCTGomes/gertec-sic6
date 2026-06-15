@@ -22,6 +22,22 @@
         body { background-color: #f3f4f6; font-family: 'Inter', sans-serif; }
         header.wco-header { background-color: #1d4ed8 !important; }
     </style>
+
+    <!-- Notificações Push (Firebase Cloud Messaging) -->
+    <script src="https://www.gstatic.com/firebasejs/12.14.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.14.0/firebase-messaging-compat.js"></script>
+    <script>
+        // Config Firebase Web (pública) — projeto compartilhado do relay
+        self.FIREBASE_CONFIG = {
+            apiKey: "AIzaSyCNZROnEfmugb3f67OEczx1wvootyhda6s",
+            authDomain: "terminalconsultavct.firebaseapp.com",
+            projectId: "terminalconsultavct",
+            storageBucket: "terminalconsultavct.firebasestorage.app",
+            messagingSenderId: "167968538488",
+            appId: "1:167968538488:web:e01449c18d3e160374128d"
+        };
+        self.FIREBASE_VAPID_KEY = "BBAIdufRFOwFneK7ynebpnPBepFuBB-82CWBAHRM4NueAnt4u3t4WDGp5S8WG8FOZeq2NgGtVzoMDrDNGD-NWzU";
+    </script>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans antialiased min-h-screen flex flex-col">
 
@@ -236,6 +252,23 @@
                     <input type="number" id="inputPortaTC" class="border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono">
                     <span class="text-xs text-gray-400">Padrão: 16510</span>
                 </div>
+                <div class="flex flex-col gap-1">
+                    <label class="text-xs font-bold text-gray-600 uppercase">Alertar após X buscas</label>
+                    <input type="number" min="1" id="inputBuscasLimite" class="border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono">
+                    <span class="text-xs text-gray-400">Notifica quando um produto é consultado a cada X vezes. Padrão: 10</span>
+                </div>
+                <div class="border-t border-gray-200 pt-4 flex flex-col gap-2">
+                    <label class="text-xs font-bold text-gray-600 uppercase">Notificações Push</label>
+                    <button onclick="ativarNotificacoes()" id="btnAtivarPush" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-bold transition-colors flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-bell"></i> Ativar Notificações
+                    </button>
+                    <button onclick="testarNotificacao()" id="btnTestePush" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-paper-plane"></i> Enviar teste
+                    </button>
+                    <div id="msgPush" class="hidden text-xs font-semibold text-center py-1.5 rounded-lg"></div>
+                    <span class="text-xs text-gray-400">Avisa quando um leitor cai ou um produto não é encontrado.</span>
+                </div>
+
                 <div id="msgConfig" class="hidden text-xs font-semibold text-center py-2 rounded-lg"></div>
                 <button onclick="salvarConfig()" id="btnSalvarConfig" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-bold transition-colors flex items-center justify-center gap-2">
                     <i class="fa-solid fa-floppy-disk"></i> Salvar Configurações
@@ -635,10 +668,12 @@
                 document.getElementById('inputPortaBP').value = data.PORT_BP;
                 document.getElementById('inputPortaTC').value = data.PORT_TC;
                 document.getElementById('inputImpressoraUrl').value = data.IMPRESSORA_URL || '';
+                document.getElementById('inputBuscasLimite').value = data.PUSH_BUSCAS_LIMITE || 10;
             } catch (e) {
                 document.getElementById('inputPortaBP').value = 6500;
                 document.getElementById('inputPortaTC').value = 16510;
                 document.getElementById('inputImpressoraUrl').value = '';
+                document.getElementById('inputBuscasLimite').value = 10;
             }
             document.getElementById('modalConfig').classList.remove('hidden');
         }
@@ -657,7 +692,8 @@
                     body: JSON.stringify({
                         PORT_BP: document.getElementById('inputPortaBP').value,
                         PORT_TC: document.getElementById('inputPortaTC').value,
-                        IMPRESSORA_URL: document.getElementById('inputImpressoraUrl').value
+                        IMPRESSORA_URL: document.getElementById('inputImpressoraUrl').value,
+                        PUSH_BUSCAS_LIMITE: document.getElementById('inputBuscasLimite').value
                     })
                 });
                 const data = await res.json();
@@ -671,6 +707,82 @@
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Salvar Configurações';
+            }
+        }
+
+        // ── Notificações Push ───────────────────────────────────────────────
+        function msgPush(texto, ok) {
+            const el = document.getElementById('msgPush');
+            el.className = `text-xs font-semibold text-center py-1.5 rounded-lg ${ok
+                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                : 'bg-red-50 text-red-700 border border-red-200'}`;
+            el.innerText = texto;
+            el.classList.remove('hidden');
+        }
+
+        async function ativarNotificacoes() {
+            const btn = document.getElementById('btnAtivarPush');
+            if (!self.FIREBASE_CONFIG || !self.FIREBASE_VAPID_KEY) {
+                return msgPush('Configuração do Firebase ausente.', false);
+            }
+            if (!('serviceWorker' in navigator) || !('Notification' in window)) {
+                return msgPush('Este navegador não suporta notificações push.', false);
+            }
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Ativando...';
+            try {
+                const permissao = await Notification.requestPermission();
+                if (permissao !== 'granted') return msgPush('Permissão negada pelo navegador.', false);
+
+                if (!firebase.apps.length) firebase.initializeApp(self.FIREBASE_CONFIG);
+                const reg = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+                const messaging = firebase.messaging();
+
+                // Mensagens recebidas com a aba EM FOCO (o SW só trata segundo plano)
+                messaging.onMessage((payload) => {
+                    const d = payload.data || {};
+                    const opts = {
+                        body: d.body || '',
+                        icon: '/res/icons/icon_x512.png',
+                        badge: '/res/icons/maskable_icon_x96.png',
+                        data: d
+                    };
+                    if (d.acao === 'imprimir' && d.codigo) {
+                        opts.actions = [{ action: 'imprimir', title: '🖨️ Imprimir preço' }];
+                        opts.requireInteraction = true;
+                    }
+                    reg.showNotification(d.title || 'GERTEC', opts);
+                });
+
+                const token = await messaging.getToken({
+                    vapidKey: self.FIREBASE_VAPID_KEY,
+                    serviceWorkerRegistration: reg
+                });
+                if (!token) return msgPush('Não foi possível obter o token.', false);
+
+                const res = await fetch('/api/push/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token })
+                });
+                if (!res.ok) throw new Error('falha ao registrar no servidor');
+                msgPush('Notificações ativadas neste dispositivo!', true);
+            } catch (e) {
+                msgPush('Erro: ' + e.message, false);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-bell"></i> Ativar Notificações';
+            }
+        }
+
+        async function testarNotificacao() {
+            try {
+                const res = await fetch('/api/push/test', { method: 'POST' });
+                const data = await res.json();
+                if (data.ok) msgPush(`Teste enviado para ${data.enviados || 0} dispositivo(s).`, true);
+                else msgPush('Falha: ' + (data.motivo || data.erro || 'sem dispositivos'), false);
+            } catch (e) {
+                msgPush('Erro ao testar: ' + e.message, false);
             }
         }
 

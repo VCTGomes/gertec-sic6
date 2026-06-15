@@ -8,6 +8,7 @@ function lerConfig() {
         PORT_BP: parseInt(process.env.PORT_BP) || 6500,
         PORT_TC: parseInt(process.env.PORT_TC) || 16510,
         IMPRESSORA_URL: process.env.IMPRESSORA_URL || '',
+        PUSH_BUSCAS_LIMITE: parseInt(process.env.PUSH_BUSCAS_LIMITE) || 10,
         APELIDOS: {}
     };
     try {

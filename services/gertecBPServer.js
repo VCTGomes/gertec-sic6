@@ -3,8 +3,15 @@ const fs = require('fs');
 const path = require('path');
 const { buscarPrecoLocal: buscarPrecoSicweb } = require('../routes/produtos');
 const { lerConfig } = require('./config');
+const push = require('./push');
 
 const DB_PATH = path.join(__dirname, '../data/temp/bdTempLeitura.json');
+
+// Nome amigável do terminal (apelido salvo > modelo > IP) para as notificações
+function nomeTerminal(t, ip) {
+    const { APELIDOS = {} } = lerConfig();
+    return (t && APELIDOS[t.serial]) || (t && t.modelo) || ip;
+}
 
 // --- Funções de Banco de Dados ---
 function lerHistorico() {
@@ -157,6 +164,10 @@ if (!produto) {
                 };
                 salvarLeitura(leituraErro);
                 io.emit('novaLeitura', leituraErro);
+                push.notificar('Produto não encontrado', `Código ${codigo} em ${nomeTerminal(terminais[id], ip)}`, {
+                    data: { codigo, tipo: 'nao_encontrado' },
+                    chaveCooldown: `nf:${codigo}`
+                });
                 return;
             }
 
@@ -199,8 +210,9 @@ logDebug(ip, `[SUCESSO] Encontrado: ${produto.nome} | R$ ${produto.preco}`);
             };
             salvarLeitura(leitura);
             io.emit('novaLeitura', leitura);
-            
-        } catch (e) { 
+            push.contabilizarBusca(codigo, produto.nome, lerConfig().PUSH_BUSCAS_LIMITE);
+
+        } catch (e) {
             logDebug(ip, `[ERRO NA BUSCA] ${e.message}`);
             if (!socket.destroyed) socket.write('#ERRO NA BUSCA| \0'); 
         }
@@ -373,13 +385,18 @@ logDebug(ip, `[SUCESSO] Encontrado: ${produto.nome} | R$ ${produto.preco}`);
             }
         });
 
-        socket.on('close', () => { 
-            if (keepAlive) clearInterval(keepAlive); 
-            delete terminais[id]; 
-            delete socketsTCP[ip]; 
-            io.emit('atualizarTerminaisBP', Object.values(terminais)); 
+        socket.on('close', () => {
+            if (keepAlive) clearInterval(keepAlive);
+            const nome = nomeTerminal(terminais[id], ip);
+            delete terminais[id];
+            delete socketsTCP[ip];
+            io.emit('atualizarTerminaisBP', Object.values(terminais));
             logDebug(ip, `[SYS] Conexão encerrada pelo terminal.`);
             console.log(`[-] BP G2 Desconectado: ${ip}`);
+            push.notificar('Leitor desconectado', `${nome} saiu do ar.`, {
+                data: { ip, tipo: 'desconexao' },
+                chaveCooldown: `disc:${ip}`
+            });
         });
     });
 

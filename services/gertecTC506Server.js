@@ -3,8 +3,15 @@ const fs = require('fs');
 const path = require('path');
 const { buscarPrecoLocal: buscarPrecoSicweb } = require('../routes/produtos');
 const { lerConfig } = require('./config');
+const push = require('./push');
 
 const DB_PATH = path.join(__dirname, '../data/temp/bdTempLeitura.json');
+
+// Nome amigável do terminal (apelido salvo > modelo > IP) para as notificações
+function nomeTerminal(t, ip) {
+    const { APELIDOS = {} } = lerConfig();
+    return (t && APELIDOS[t.serial]) || (t && t.modelo) || ip;
+}
 
 // --- Funções de Banco de Dados ---
 function lerHistorico() {
@@ -303,20 +310,30 @@ module.exports = function (io) {
 // 1. AQUI ESTÁ A PROTEÇÃO CONTRA A QUEDA DE ENERGIA/DESLIGAMENTO
         socket.on('error', (err) => {
             io.emit('logDebug', { ip, msg: `[ERRO DE REDE] Queda brusca no terminal TC-506: ${err.code}` });
-            
+
             // Limpa o fantasma da memória para não travar o painel
+            const nome = nomeTerminal(terminais[ip], ip);
             if (keepAlive) clearInterval(keepAlive);
-            delete terminais[ip]; 
+            delete terminais[ip];
             delete socketsTCP[ip];
             io.emit('atualizarTerminaisTC', Object.values(terminais));
+            push.notificar('Leitor desconectado', `${nome} caiu (queda brusca).`, {
+                data: { ip, tipo: 'desconexao' },
+                chaveCooldown: `disc:${ip}`
+            });
         });
 
         // 2. AQUI É O DESLIGAMENTO NORMAL E EDUCADO
         socket.on('close', () => {
             if (keepAlive) clearInterval(keepAlive);
-            delete terminais[ip]; 
+            const nome = nomeTerminal(terminais[ip], ip);
+            delete terminais[ip];
             delete socketsTCP[ip];
             io.emit('atualizarTerminaisTC', Object.values(terminais));
+            push.notificar('Leitor desconectado', `${nome} saiu do ar.`, {
+                data: { ip, tipo: 'desconexao' },
+                chaveCooldown: `disc:${ip}`
+            });
         });
     }); // Fim do net.createServer
   
@@ -382,6 +399,10 @@ module.exports = function (io) {
                 };
                 salvarLeitura(leituraErro);
                 io.emit('novaLeitura', leituraErro);
+                push.notificar('Produto não encontrado', `Código ${codigo} em ${nomeTerminal(terminais[ip], ip)}`, {
+                    data: { codigo, tipo: 'nao_encontrado' },
+                    chaveCooldown: `nf:${codigo}`
+                });
                 return;
             }
 
@@ -398,7 +419,8 @@ module.exports = function (io) {
             
             salvarLeitura(leitura);
             io.emit('novaLeitura', leitura);
-                        
+            push.contabilizarBusca(codigo, produto.nome, lerConfig().PUSH_BUSCAS_LIMITE);
+
                 // 1. Função interna rápida para limpar acentos (remove Á, Ç, õ, etc)
 // 1. Função interna rápida para limpar acentos
                 const removerAcentos = (str) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
