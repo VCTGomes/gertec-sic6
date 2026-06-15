@@ -60,11 +60,21 @@ app.post('/notify', exigeSegredo, async (req, res) => {
         let enviados = 0, falhas = 0;
         const invalidos = [];
 
+        // Mensagem data-only: o service worker do cliente é quem renderiza a
+        // notificação (permite botões de ação e evita duplicidade no Chrome).
+        // Todos os valores de `data` no FCM precisam ser string.
+        const dataMsg = { title: String(title || ''), body: String(body || '') };
+        if (data && typeof data === 'object') {
+            for (const [k, v] of Object.entries(data)) {
+                if (v !== undefined && v !== null) dataMsg[k] = String(v);
+            }
+        }
+
         for (const lote of emLotes(alvos, 500)) {
             const resp = await messaging.sendEachForMulticast({
                 tokens: lote,
-                notification: { title: title || '', body: body || '' },
-                data: data && typeof data === 'object' ? data : undefined
+                data: dataMsg,
+                webpush: { headers: { Urgency: 'high' } }
             });
             enviados += resp.successCount;
             falhas   += resp.failureCount;
