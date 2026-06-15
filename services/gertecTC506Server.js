@@ -48,7 +48,9 @@ module.exports = function (io) {
     const IdaReaderScanner = 0x59;
     const IDwSerialData    = 0x23;
     const IDvDispClear     = 0x21;
-    
+    const IDvGetUID        = 0x1B; // 27  - solicita UID (MAC + nome) do terminal
+    const RIDvGetUID       = 0x1C; // 28  - resposta: 6 bytes MAC + 32 bytes nome
+
     // IDs de Arquivo (Confirmados pela sua doc)
     const IDvRecvFile      = 0x61; // 97 decimal
     const RIDvRecvFile     = 0x62; // 98 decimal
@@ -154,7 +156,8 @@ module.exports = function (io) {
         0x23: 'IDwSerialData', 0x21: 'IDvDispClear',
         0x61: 'IDvRecvFile', 0x62: 'RIDvRecvFile',
         0x63: 'IDwWriteFile', 0x64: 'RIDwWriteFile',
-        0xB8: 'IDwDelFile', 0xB9: 'RIDwDelFile'
+        0xB8: 'IDwDelFile', 0xB9: 'RIDwDelFile',
+        0x1B: 'IDvGetUID', 0x1C: 'RIDvGetUID'
     };
 
     function nomePacote(id) { return mapPacotes[id] || `0x${id.toString(16).toUpperCase()}`; }
@@ -211,13 +214,24 @@ module.exports = function (io) {
                     enviarPacote(socket, ip, IDContinue, Buffer.from([0x01, 0x00, 0x00, 0x00]));
                 }
                 else if (id === RIDContinue) {
-                    terminais[ip] = { id: ip, ip, modelo: 'TC-506 Mídia', status: 'Online', conectadoEm: new Date().toLocaleTimeString('pt-BR') };
+                    terminais[ip] = { id: ip, ip, modelo: 'TC-506 Mídia', serial: '', status: 'Online', conectadoEm: new Date().toLocaleTimeString('pt-BR') };
                     io.emit('atualizarTerminaisTC', Object.values(terminais));
+                    enviarPacote(socket, ip, IDvGetUID); // solicita o MAC (serial estável) do terminal
                     const pClear = criarPacote(IDvDispClear, Buffer.from([0x04, 0x01]));
                     const pBoasVindas = criarPacote(IDwSerialData, gerarBloco(80, 100, 'PASSE O PRODUTO', 'DejaVuSans-Bold.ttf', 30, 0x010F));
                     socket.write(Buffer.concat([pClear, pBoasVindas]));
                     if (keepAlive) clearInterval(keepAlive);
                     keepAlive = setInterval(() => enviarPacote(socket, ip, IDvLive), 30000);
+                }
+                else if (id === RIDvGetUID) {
+                    // Resposta do UID: primeiros 6 bytes = MAC; usamos como serial estável
+                    if (terminais[ip] && arg.length >= 6) {
+                        const mac = Array.from(arg.subarray(0, 6)).map(b => b.toString(16).padStart(2, '0')).join(':').toUpperCase();
+                        terminais[ip].serial = mac;
+                        io.emit('logDebug', { ip, msg: `[SYS] UID/MAC do terminal: ${mac}` });
+                        console.log(`[TC-506] ${ip} -> MAC/serial: ${mac}`);
+                        io.emit('atualizarTerminaisTC', Object.values(terminais));
+                    }
                 }
                 else if (id === RIDvRecvFile) {
                     // Lógica CORRIGIDA baseada no manual enviado
@@ -357,11 +371,12 @@ module.exports = function (io) {
                 socket.write(Buffer.concat([pClear, pErro]));
                 
                 // --- NOVIDADE: Registra pro painel a falha de leitura ---
-                const leituraErro = { 
-                    terminal: `TC-506 (${ip})`, 
-                    codigo: codigo, 
-                    nome: '❌ NÃO ENCONTRADO', 
-                    preco: '-', 
+                const leituraErro = {
+                    terminal: `TC-506 (${ip})`,
+                    serial: terminais[ip] ? terminais[ip].serial : '',
+                    codigo: codigo,
+                    nome: '❌ NÃO ENCONTRADO',
+                    preco: '-',
                     hora: new Date().toLocaleTimeString('pt-BR'),
                     status: 'erro'
                 };
@@ -371,11 +386,12 @@ module.exports = function (io) {
             }
 
             // Sucesso: Salva e exibe no Display e Web
-            const leitura = { 
-                terminal: `TC-506 (${ip})`, 
-                codigo: codigo, 
-                nome: produto.nome, 
-                preco: produto.preco, 
+            const leitura = {
+                terminal: `TC-506 (${ip})`,
+                serial: terminais[ip] ? terminais[ip].serial : '',
+                codigo: codigo,
+                nome: produto.nome,
+                preco: produto.preco,
                 hora: new Date().toLocaleTimeString('pt-BR'),
                 status: 'ok'
             };

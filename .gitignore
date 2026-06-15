@@ -20,4 +20,4 @@ public/web.config
 public/res/logo_md.png
 
 # Configurações
-C:\GERTEC\data\config.json
+data/config.json

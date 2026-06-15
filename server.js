@@ -29,6 +29,7 @@ app.post('/api/config', (req, res) => {
         const { PORT_BP, PORT_TC, IMPRESSORA_URL } = req.body;
         const atual = lerConfig();
         const nova = {
+            ...atual,
             PORT_BP: parseInt(PORT_BP) || atual.PORT_BP,
             PORT_TC: parseInt(PORT_TC) || atual.PORT_TC,
             IMPRESSORA_URL: IMPRESSORA_URL !== undefined ? String(IMPRESSORA_URL).trim() : atual.IMPRESSORA_URL
@@ -36,6 +37,25 @@ app.post('/api/config', (req, res) => {
         fs.mkdirSync(path.dirname(configPath), { recursive: true });
         fs.writeFileSync(configPath, JSON.stringify(nova, null, 2));
         res.json({ ok: true });
+    } catch (e) {
+        res.status(500).json({ erro: e.message });
+    }
+});
+
+// Salva/remove o apelido de um terminal, atrelado ao serial (MAC) do hardware
+app.post('/api/apelido', (req, res) => {
+    try {
+        const { chave, apelido } = req.body;
+        if (!chave) return res.status(400).json({ erro: 'Identificador (serial) ausente' });
+        const atual = lerConfig();
+        const apelidos = { ...(atual.APELIDOS || {}) };
+        const nome = apelido !== undefined ? String(apelido).trim() : '';
+        if (nome) apelidos[chave] = nome;
+        else delete apelidos[chave];
+        const nova = { ...atual, APELIDOS: apelidos };
+        fs.mkdirSync(path.dirname(configPath), { recursive: true });
+        fs.writeFileSync(configPath, JSON.stringify(nova, null, 2));
+        res.json({ ok: true, APELIDOS: apelidos });
     } catch (e) {
         res.status(500).json({ erro: e.message });
     }

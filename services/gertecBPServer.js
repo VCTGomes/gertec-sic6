@@ -150,8 +150,9 @@ if (!produto) {
                 }
                 
                 // --- NOVIDADE: Registra e envia pro painel mesmo se não achar ---
-                const leituraErro = { 
-                    terminal: `${terminais[id] ? terminais[id].modelo : 'Desconhecido'} (${ip})`, 
+                const leituraErro = {
+                    terminal: `${terminais[id] ? terminais[id].modelo : 'Desconhecido'} (${ip})`,
+                    serial: terminais[id] ? terminais[id].serial : '',
                     codigo, nome: '❌ NÃO ENCONTRADO', preco: '-', hora: new Date().toLocaleTimeString('pt-BR'), status: 'erro'
                 };
                 salvarLeitura(leituraErro);
@@ -191,8 +192,9 @@ logDebug(ip, `[SUCESSO] Encontrado: ${produto.nome} | R$ ${produto.preco}`);
                 }
             }
             
-            const leitura = { 
-                terminal: `${terminais[id] ? terminais[id].modelo : 'Desconhecido'} (${ip})`, 
+            const leitura = {
+                terminal: `${terminais[id] ? terminais[id].modelo : 'Desconhecido'} (${ip})`,
+                serial: terminais[id] ? terminais[id].serial : '',
                 codigo, nome: produto.nome, preco: produto.preco, hora: new Date().toLocaleTimeString('pt-BR'), status: 'ok'
             };
             salvarLeitura(leitura);
@@ -273,7 +275,7 @@ logDebug(ip, `[SUCESSO] Encontrado: ${produto.nome} | R$ ${produto.preco}`);
         });
 
         socketsTCP[ip] = socket;
-        terminais[id] = { id, ip, modelo: 'Aguardando...', status: 'Online', conectadoEm: new Date().toLocaleTimeString('pt-BR'), identificado: false };
+        terminais[id] = { id, ip, modelo: 'Aguardando...', serial: '', status: 'Online', conectadoEm: new Date().toLocaleTimeString('pt-BR'), identificado: false };
         io.emit('atualizarTerminaisBP', Object.values(terminais));
         
         logDebug(ip, `[SYS] Novo terminal conectado.`);
@@ -284,6 +286,9 @@ logDebug(ip, `[SUCESSO] Encontrado: ${produto.nome} | R$ ${produto.preco}`);
             // REPORTANDO TUDO PRO FRONT END: Exibindo o dado bruto e deixando os null bytes visíveis
             const textoBruto = data.toString('utf8');
             logDebug(ip, `[RX BRUTO] ${textoBruto.replace(/\0/g, '\\0')}`);
+            if (/macaddr/i.test(textoBruto)) {
+                console.log(`[BP G2E] ${ip} RAW macaddr -> texto: ${JSON.stringify(textoBruto)} | bytes: ${Array.from(data).join(',')}`);
+            }
 
             dataBuffer += textoBruto;
             
@@ -305,6 +310,27 @@ logDebug(ip, `[SUCESSO] Encontrado: ${produto.nome} | R$ ${produto.preco}`);
                 
                 // Oculta o log de #live no modal para não floodar a tela de debug a cada 15s
                 if (msg === '#live') continue;
+
+                // Resposta do MAC: #fullmacaddr[ethAble][tam+48][macEth][wifiAble][tam+48][macWifi]
+                // (bytes de controle têm offset +48, então não há nulos no payload)
+                if (msg.startsWith('#fullmacaddr') && !msg.startsWith('#fullmacaddr?')) {
+                    try {
+                        let p = '#fullmacaddr'.length;
+                        p++;                              // ethIsAble ('0'/'1')
+                        const ethSize = msg.charCodeAt(p++) - 48;
+                        const macEth = msg.substr(p, ethSize);
+                        const serial = (macEth || '').trim().toUpperCase();
+                        if (serial && terminais[id]) {
+                            terminais[id].serial = serial;
+                            logDebug(ip, `[SYS] MAC do terminal: ${serial}`);
+                            console.log(`[BP G2E] ${ip} (${terminais[id].modelo}) -> MAC/serial: ${serial}`);
+                            io.emit('atualizarTerminaisBP', Object.values(terminais));
+                        }
+                    } catch (e) {
+                        logDebug(ip, `[SYS] Falha ao ler MAC: ${e.message}`);
+                    }
+                    continue;
+                }
 
                 if (msg.startsWith('#sendmedia_ok') || msg.startsWith('#removemedia_ok') || msg.startsWith('#savemediasconf_ok')) {
                     const sucesso = msg.endsWith('1');
@@ -330,6 +356,8 @@ logDebug(ip, `[SUCESSO] Encontrado: ${produto.nome} | R$ ${produto.preco}`);
                             terminais[id].identificado = true;
                             logDebug(ip, `[SYS] Terminal identificado como: ${terminais[id].modelo}`);
                             io.emit('atualizarTerminaisBP', Object.values(terminais));
+                            logDebug(ip, `[TX] Solicitando MAC (#fullmacaddr?)`);
+                            socket.write('#fullmacaddr?\0'); // obtém o MAC (serial estável)
                         }
                         if (!keepAlive) {
                             logDebug(ip, `[SYS] Iniciando ciclo de Keep Alive (#live) a cada 15s`);

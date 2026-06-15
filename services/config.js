@@ -7,7 +7,8 @@ function lerConfig() {
     const defaults = {
         PORT_BP: parseInt(process.env.PORT_BP) || 6500,
         PORT_TC: parseInt(process.env.PORT_TC) || 16510,
-        IMPRESSORA_URL: process.env.IMPRESSORA_URL || ''
+        IMPRESSORA_URL: process.env.IMPRESSORA_URL || '',
+        APELIDOS: {}
     };
     try {
         if (fs.existsSync(configPath)) {

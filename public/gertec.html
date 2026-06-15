@@ -255,6 +255,7 @@
         let logsPorIP = {};
         let ipDebugAtual = null;
         let historicoCompleto = [];
+        let apelidos = {};
 
         function renderizarTerminais() {
             const terminais = [...listaBP.map(t => ({...t, tipo: 'BP'})), ...listaTC.map(t => ({...t, tipo: 'TC'}))];
@@ -267,12 +268,21 @@
             }
             container.innerHTML = terminais.map(t => {
                 const isTC = t.tipo === 'TC';
+                const serial = t.serial || '';
+                const apelido = serial ? apelidos[serial] : '';
+                const nomeExibido = apelido || t.modelo;
+                const spanAttrs = serial
+                    ? `class="apelido-nome cursor-pointer hover:text-blue-600 border-b border-dashed border-transparent hover:border-blue-400 transition-colors" title="Clique para apelidar (MAC: ${serial})" data-modelo="${t.modelo}" onclick="editarApelido(this, '${serial}')"`
+                    : `class="text-gray-700" title="Aguardando identificação do hardware (MAC)..."`;
                 return `
                 <div class="flex items-center justify-between p-3 bg-gray-50 border border-gray-100 rounded-lg shadow-sm">
                     <div class="flex items-center gap-3">
                         <i class="fa-solid ${isTC ? 'fa-tablet-screen-button text-blue-500' : 'fa-desktop text-blue-400'} text-lg"></i>
                         <div>
-                            <div class="font-bold text-sm text-gray-700">${t.modelo} <span class="font-mono text-xs font-normal text-gray-500 ml-1">(${t.ip})</span></div>
+                            <div class="font-bold text-sm text-gray-700">
+                                <span ${spanAttrs}>${nomeExibido}</span>
+                                <span class="font-mono text-xs font-normal text-gray-500 ml-1">(${t.ip})</span>
+                            </div>
                             <div class="text-xs text-gray-500">Conectado às ${t.conectadoEm}</div>
                         </div>
                     </div>
@@ -290,6 +300,60 @@
 
         socket.on('atualizarTerminaisBP', (terminais) => { listaBP = terminais; renderizarTerminais(); });
         socket.on('atualizarTerminaisTC', (terminais) => { listaTC = terminais; renderizarTerminais(); });
+
+        // ── Apelidos (atrelados ao serial/MAC do terminal) ──────────────────
+        function editarApelido(span, serial) {
+            if (!serial) return;
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.value = apelidos[serial] || '';
+            input.maxLength = 32;
+            input.placeholder = span.dataset.modelo || 'apelido';
+            input.className = 'border border-blue-400 rounded px-1.5 py-0.5 text-sm font-bold text-gray-700 w-44 focus:outline-none focus:ring-1 focus:ring-blue-500';
+            span.replaceWith(input);
+            input.focus();
+            input.select();
+            let done = false;
+            const finalizar = async (salvar) => {
+                if (done) return;
+                done = true;
+                if (salvar) await salvarApelido(serial, input.value.trim());
+                else renderizarTerminais();
+            };
+            input.addEventListener('blur', () => finalizar(true));
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+                else if (e.key === 'Escape') { finalizar(false); }
+            });
+        }
+
+        async function salvarApelido(serial, apelido) {
+            try {
+                const res = await fetch('/api/apelido', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ chave: serial, apelido })
+                });
+                const data = await res.json();
+                if (data && data.APELIDOS) apelidos = data.APELIDOS;
+                else if (apelido) apelidos[serial] = apelido;
+                else delete apelidos[serial];
+            } catch (e) {
+                console.error('Erro ao salvar apelido:', e);
+            }
+            renderizarTerminais();
+            recarregarHistorico();
+        }
+
+        async function carregarApelidos() {
+            try {
+                const res = await fetch('/api/config');
+                const data = await res.json();
+                apelidos = data.APELIDOS || {};
+            } catch (e) { apelidos = {}; }
+            renderizarTerminais();
+            recarregarHistorico();
+        }
 
         async function imprimirEtiqueta(codigo) {
             if (!codigo || codigo === '-') return;
@@ -479,6 +543,24 @@
 
         function limparHistorico() { if (confirm("Limpar histórico?")) socket.emit('limparHistorico'); }
 
+        function nomeTerminalHist(leitura) {
+            const ap = leitura.serial ? apelidos[leitura.serial] : null;
+            if (!ap) return leitura.terminal;
+            const m = leitura.terminal.match(/\(([^)]+)\)/);
+            return `${ap} <span class="text-gray-400 font-normal">(${m ? m[1] : ''})</span>`;
+        }
+
+        function recarregarHistorico() {
+            const tbody = document.getElementById('tabelaLeituras');
+            if (!tbody) return;
+            if (!historicoCompleto.length) {
+                tbody.innerHTML = '<tr id="linhaVazia"><td colspan="6" class="text-center py-12 text-gray-400">Nenhuma leitura registrada.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = '';
+            historicoCompleto.forEach(l => renderizarLeitura(l, false));
+        }
+
         function renderizarLeitura(leitura, animar = false) {
             const linhaVazia = document.getElementById('linhaVazia');
             if (linhaVazia) linhaVazia.remove();
@@ -489,7 +571,7 @@
             tr.className = `hover:bg-blue-50 transition-colors ${animar ? 'bg-emerald-50' : ''}`;
             tr.innerHTML = `
                 <td class="px-4 py-4 text-xs text-gray-500">${leitura.hora}</td>
-                <td class="px-4 py-4 font-mono text-xs text-blue-600">${leitura.terminal}</td>
+                <td class="px-4 py-4 font-mono text-xs text-blue-600">${nomeTerminalHist(leitura)}</td>
                 <td class="px-4 py-4 font-mono text-gray-600">${leitura.codigo}</td>
                 <td class="px-4 py-4 ${corNome}">${leitura.nome}</td>
                 <td class="px-4 py-4 ${corPreco}">${leitura.preco}</td>
@@ -591,6 +673,9 @@
                 btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Salvar Configurações';
             }
         }
+
+        // Carrega os apelidos salvos assim que a página abre
+        carregarApelidos();
     </script>
 </body>
 </html>
