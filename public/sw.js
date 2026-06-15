@@ -51,16 +51,23 @@ function montarNotificacao(d) {
     return [d.title || 'GERTEC', opts];
 }
 
-// Mensagens recebidas com a aba fechada / em segundo plano
-messaging.onBackgroundMessage((payload) => {
-    const d = payload.data || {};
+// Trata um `data` de notificação: ou limpa (push reverso) ou exibe.
+// Fonte única usada tanto no segundo plano quanto no primeiro plano (via postMessage).
+function exibirOuLimpar(d) {
     // Push reverso "limpar": só fecha as notificações, não exibe nada
-    if (d.acao === 'limpar') {
-        limparNotificacoes();
-        return;
-    }
+    if (d.acao === 'limpar') return limparNotificacoes();
     const [titulo, opts] = montarNotificacao(d);
-    self.registration.showNotification(titulo, opts);
+    return self.registration.showNotification(titulo, opts);
+}
+
+// Mensagens recebidas com a aba fechada / em segundo plano
+messaging.onBackgroundMessage((payload) => exibirOuLimpar(payload.data || {}));
+
+// Mensagens recebidas com a aba EM FOCO: o FCM entrega na página, que apenas
+// repassa o `data` pra cá. Assim a lógica de montar/exibir vive só no SW.
+self.addEventListener('message', (event) => {
+    const msg = event.data || {};
+    if (msg.type === 'fcm-foreground') event.waitUntil(exibirOuLimpar(msg.data || {}));
 });
 
 self.addEventListener('notificationclick', (event) => {

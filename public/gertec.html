@@ -1038,28 +1038,12 @@
                 const reg = swRegistration || await navigator.serviceWorker.register('/sw.js');
                 const messaging = firebase.messaging();
 
-                // Mensagens recebidas com a aba EM FOCO (o SW só trata segundo plano)
+                // Mensagens com a aba EM FOCO: o FCM entrega aqui (não no SW).
+                // Apenas repassamos o `data` pro SW, que monta/exibe (ou limpa) a
+                // notificação — mantendo a lógica centralizada no sw.js.
                 messaging.onMessage((payload) => {
-                    const d = payload.data || {};
-                    // Push reverso "limpar": apenas fecha as notificações locais
-                    if (d.acao === 'limpar') {
-                        reg.getNotifications().then((ns) => ns.forEach((n) => n.close()));
-                        return;
-                    }
-                    const opts = {
-                        body: d.body || '',
-                        icon: '/res/icons/icon_x512.png',
-                        badge: '/res/icons/maskable_icon_x96.png',
-                        data: d
-                    };
-                    const actions = [];
-                    if (d.acao === 'imprimir' && d.codigo) {
-                        actions.push({ action: 'imprimir', title: '🖨️ Imprimir preço' });
-                        opts.requireInteraction = true;
-                    }
-                    actions.push({ action: 'lido', title: '✓ Marcar como lido' });
-                    opts.actions = actions;
-                    reg.showNotification(d.title || 'GERTEC', opts);
+                    const sw = reg.active || navigator.serviceWorker.controller;
+                    if (sw) sw.postMessage({ type: 'fcm-foreground', data: payload.data || {} });
                 });
 
                 const token = await messaging.getToken({
