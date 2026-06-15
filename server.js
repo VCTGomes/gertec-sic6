@@ -50,6 +50,26 @@ app.post('/api/config', (req, res) => {
     }
 });
 
+// ── Impressão de Etiqueta ─────────────────────────────────────────────────────
+app.post('/api/imprimir-preco', async (req, res) => {
+    const { codigo } = req.body;
+    if (!codigo) return res.status(400).json({ erro: 'Código ausente' });
+
+    res.json({ ok: true });
+
+    if (!process.env.IMPRESSORA_URL) {
+        console.warn(`[IMPRESSORA] IMPRESSORA_URL não configurada. Ignorando.`);
+        return;
+    }
+
+    try {
+        const url = `${process.env.IMPRESSORA_URL}${codigo}`;
+        const result = await fetch(url);
+        console.log(`[IMPRESSORA] ${codigo} → HTTP ${result.status}`);
+    } catch (e) {
+        console.error(`[IMPRESSORA] Erro ao imprimir ${codigo}:`, e.message);
+    }
+});
 // ── Serviços TCP ─────────────────────────────────────────────────────────────
 require('./services/gertecBPServer')(io);
 require('./services/gertecTC506Server')(io);

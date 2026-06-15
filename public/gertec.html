@@ -287,18 +287,15 @@
         socket.on('atualizarTerminaisTC', (terminais) => { listaTC = terminais; renderizarTerminais(); });
 
         async function imprimirEtiqueta(codigo) {
-            if (!codigo || codigo === '-') return alert('Código inválido para impressão.');
+            if (!codigo || codigo === '-') return;
             try {
-                const res = await fetch('https://www.suaapi.net/api/imprimir-preco', {
+                await fetch('/api/imprimir-preco', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ codigo })
                 });
-                if (res.ok) alert(`Etiqueta do código ${codigo} impressa com sucesso!`);
-                else alert(`Erro na API de impressão. Status: ${res.status}`);
             } catch (e) {
-                console.error('Erro na impressão:', e);
-                alert('Erro de conexão ao tentar imprimir a etiqueta.');
+                console.error('Erro ao solicitar impressão:', e);
             }
         }
 

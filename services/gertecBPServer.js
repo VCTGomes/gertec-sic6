@@ -85,7 +85,7 @@ async function imprimirEtiqueta(codigo, ip, io, logDebugCallback) {
         return false; // Retorna false em caso de erro
     }
     try {
-        const url = `${process.env.IMPRESSORA_URL}?barcode=${codigo}`;
+        const url = `${process.env.IMPRESSORA_URL}${codigo}`;
         const res = await fetch(url);
         
         if (res.ok) {
