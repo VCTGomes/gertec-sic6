@@ -49,7 +49,7 @@ self.addEventListener('notificationclick', (event) => {
             fetch('/api/imprimir-preco', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ codigo: d.codigo })
+                body: JSON.stringify({ codigo: d.codigo, id: d.id })
             }).catch(() => {})
         );
         return;

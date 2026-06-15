@@ -212,7 +212,7 @@ logDebug(ip, `[SUCESSO] Encontrado: ${produto.nome} | R$ ${produto.preco}`);
             };
             salvarLeitura(leitura);
             io.emit('novaLeitura', leitura);
-            push.contabilizarBusca(codigo, produto.nome, lerConfig().PUSH_BUSCAS_LIMITE);
+            push.contabilizarBusca(codigo, produto.nome, lerConfig().PUSH_BUSCAS_LIMITE, leitura.id);
 
         } catch (e) {
             logDebug(ip, `[ERRO NA BUSCA] ${e.message}`);

@@ -80,13 +80,14 @@ async function notificar(title, body, opts = {}) {
 // A cada múltiplo de `limite` buscas do mesmo código, dispara uma notificação
 // com botão "Imprimir preço".
 const contagemBuscas = {};
-function contabilizarBusca(codigo, nome, limite) {
+function contabilizarBusca(codigo, nome, limite, id) {
     limite = parseInt(limite);
     if (!codigo || !limite || limite < 1) return;
     const n = (contagemBuscas[codigo] = (contagemBuscas[codigo] || 0) + 1);
     if (n % limite === 0) {
         notificar('Produto muito buscado', `${nome} já foi consultado ${n}x`, {
-            data: { codigo, nome, acao: 'imprimir' },
+            // `id` = leitura que cruzou o limite; o SW repassa pra registrar a impressão
+            data: { codigo, nome, acao: 'imprimir', ...(id ? { id } : {}) },
             chaveCooldown: `bm:${codigo}`,
             cooldownMs: 60000
         });

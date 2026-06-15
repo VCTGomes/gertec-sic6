@@ -421,7 +421,7 @@ module.exports = function (io) {
             
             salvarLeitura(leitura);
             io.emit('novaLeitura', leitura);
-            push.contabilizarBusca(codigo, produto.nome, lerConfig().PUSH_BUSCAS_LIMITE);
+            push.contabilizarBusca(codigo, produto.nome, lerConfig().PUSH_BUSCAS_LIMITE, leitura.id);
 
                 // 1. Função interna rápida para limpar acentos (remove Á, Ç, õ, etc)
 // 1. Função interna rápida para limpar acentos
