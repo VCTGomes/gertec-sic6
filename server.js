@@ -62,12 +62,50 @@ app.post('/api/apelido', (req, res) => {
     }
 });
 
+// ── Registro de leituras já impressas ─────────────────────────────────────────
+const IMPRESSOS_PATH = path.join(__dirname, 'data', 'temp', 'bdImpressos.json');
+
+function lerImpressos() {
+    try {
+        if (fs.existsSync(IMPRESSOS_PATH)) return JSON.parse(fs.readFileSync(IMPRESSOS_PATH, 'utf8'));
+    } catch (e) { console.error('Erro ao ler impressos:', e.message); }
+    return [];
+}
+
+function marcarImpresso(id) {
+    if (!id) return;
+    const ids = lerImpressos();
+    if (!ids.includes(id)) {
+        ids.push(id);
+        fs.mkdirSync(path.dirname(IMPRESSOS_PATH), { recursive: true });
+        fs.writeFileSync(IMPRESSOS_PATH, JSON.stringify(ids, null, 2));
+    }
+}
+
+// Lista de IDs de leituras que já tiveram o preço impresso (consumida pelo front no load)
+app.get('/api/impressos', (req, res) => res.json(lerImpressos()));
+
+// Limpa o registro de impressos junto com o histórico
+io.on('connection', (socket) => {
+    socket.on('limparHistorico', () => {
+        fs.mkdirSync(path.dirname(IMPRESSOS_PATH), { recursive: true });
+        fs.writeFileSync(IMPRESSOS_PATH, JSON.stringify([], null, 2));
+        io.emit('impressosLimpos');
+    });
+});
+
 // ── Impressão de Etiqueta ─────────────────────────────────────────────────────
 app.post('/api/imprimir-preco', async (req, res) => {
-    const { codigo } = req.body;
+    const { codigo, id } = req.body;
     if (!codigo) return res.status(400).json({ erro: 'Código ausente' });
 
     res.json({ ok: true });
+
+    // Marca a leitura individual como impressa e avisa todos os clientes
+    if (id) {
+        marcarImpresso(id);
+        io.emit('leituraImpressa', id);
+    }
 
     const { IMPRESSORA_URL } = lerConfig();
     if (!IMPRESSORA_URL) {

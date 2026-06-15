@@ -1,6 +1,7 @@
 const net = require('net');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { buscarPrecoLocal: buscarPrecoSicweb } = require('../routes/produtos');
 const { lerConfig } = require('./config');
 const push = require('./push');
@@ -22,6 +23,7 @@ function lerHistorico() {
 }
 
 function salvarLeitura(leitura) {
+    if (!leitura.id) leitura.id = crypto.randomUUID(); // ID único p/ rastrear impressão individual
     const hist = lerHistorico();
     hist.unshift(leitura);
     if (hist.length > 200) hist.pop();

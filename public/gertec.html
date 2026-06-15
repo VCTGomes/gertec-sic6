@@ -286,7 +286,7 @@
                 </div>
                 <div class="flex flex-col gap-1">
                     <label class="text-xs font-bold text-gray-600 uppercase">Impressora de Preços (URL)</label>
-                    <input type="text" id="inputImpressoraUrl" placeholder="http://10.20.0.100:4738/api/v1/imprimir/preco?barcode=" class="border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono">
+                    <input type="text" id="inputImpressoraUrl" placeholder="http://seu_ip:porta/api/v1/imprimir/preco?barcode=" class="border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono">
                     <span class="text-xs text-gray-400">O código de barras é anexado ao final da URL.</span>
                 </div>
                 <div class="flex flex-col gap-1">
@@ -335,6 +335,7 @@
         let logsPorIP = {};
         let ipDebugAtual = null;
         let historicoCompleto = [];
+        let impressos = new Set(); // IDs de leituras que já tiveram o preço impresso
         let apelidos = {};
 
         function renderizarTerminais() {
@@ -435,13 +436,15 @@
             recarregarHistorico();
         }
 
-        async function imprimirEtiqueta(codigo) {
+        async function imprimirEtiqueta(codigo, id) {
             if (!codigo || codigo === '-') return;
+            // Feedback imediato: marca a leitura como impressa (o servidor confirma via socket)
+            if (id) { impressos.add(id); renderizarLeituras(false); }
             try {
                 await fetch('/api/imprimir-preco', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ codigo })
+                    body: JSON.stringify({ codigo, id })
                 });
             } catch (e) {
                 console.error('Erro ao solicitar impressão:', e);
@@ -713,7 +716,7 @@
                     <td class="px-4 py-4 ${corNome}">${leitura.nome}</td>
                     <td class="px-4 py-4 text-xs ${corPreco}">${leitura.preco}</td>
                     <td class="px-4 py-4 text-center">
-                        <button onclick="imprimirEtiqueta('${leitura.codigo}')" class="bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-2 rounded text-xs font-semibold transition-colors" title="Imprimir Etiqueta">
+                        <button onclick="imprimirEtiqueta('${leitura.codigo}', '${leitura.id || ''}')" class="${leitura.id && impressos.has(leitura.id) ? 'text-gray-400 hover:text-blue-700' : 'bg-blue-100 hover:bg-blue-200 text-blue-700'} px-3 py-2 rounded text-xs font-semibold transition-colors" title="${leitura.id && impressos.has(leitura.id) ? 'Preço já impresso — imprimir novamente' : 'Imprimir Etiqueta'}">
                             <i class="fa-solid fa-print"></i>
                         </button>
                     </td>
@@ -876,6 +879,17 @@
             calcularLeitores();
         });
 
+        // Servidor confirmou que uma leitura teve o preço impresso
+        socket.on('leituraImpressa', (id) => { if (id) { impressos.add(id); renderizarLeituras(false); } });
+        socket.on('impressosLimpos', () => { impressos.clear(); renderizarLeituras(false); });
+
+        async function carregarImpressos() {
+            try {
+                const res = await fetch('/api/impressos');
+                impressos = new Set(await res.json());
+            } catch (e) { impressos = new Set(); }
+        }
+
         // ── Config ──────────────────────────────────────────────────────────
         async function abrirModalConfig() {
             document.getElementById('msgConfig').classList.add('hidden');
@@ -1008,7 +1022,8 @@
         history.replaceState({ aba: abaInicial }, '', '?' + (ABA_PARAM[abaInicial] || 'recentes'));
         mudarAbaMain(abaInicial, false);
 
-        // Carrega os apelidos salvos assim que a página abre
+        // Carrega impressos e apelidos salvos assim que a página abre
+        carregarImpressos().then(() => renderizarLeituras(false));
         carregarApelidos();
     </script>
 </body>

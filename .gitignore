@@ -24,3 +24,6 @@ data/config.json
 
 # Notificações Push — tokens dos dispositivos (não versionar)
 data/push/keys.json
+
+# Histórico de impressão
+data/bdImpressos.json
