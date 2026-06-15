@@ -224,7 +224,7 @@
 
     <!-- Modal Config -->
     <div id="modalConfig" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-opacity">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm max-h-[90vh] overflow-hidden flex flex-col">
             <div class="bg-blue-700 px-5 py-4 flex justify-between items-center text-white shrink-0">
                 <h3 class="font-bold flex items-center gap-2">
                     <i class="fa-solid fa-gear"></i> Configurações
@@ -233,7 +233,7 @@
                     <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
             </div>
-            <div class="p-5 flex flex-col gap-4">
+            <div class="p-5 flex flex-col gap-4 overflow-y-auto">
                 <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800 flex items-start gap-2">
                     <i class="fa-solid fa-triangle-exclamation mt-0.5 shrink-0"></i>
                     <span>Alterar as portas requer reinicialização do servidor. A impressora aplica imediatamente.</span>
