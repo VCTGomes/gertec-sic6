@@ -966,7 +966,7 @@
                 if (permissao !== 'granted') return msgPush('Permissão negada pelo navegador.', false);
 
                 if (!firebase.apps.length) firebase.initializeApp(self.FIREBASE_CONFIG);
-                const reg = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+                const reg = await navigator.serviceWorker.register('/sw.js');
                 const messaging = firebase.messaging();
 
                 // Mensagens recebidas com a aba EM FOCO (o SW só trata segundo plano)
