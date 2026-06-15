@@ -18,17 +18,7 @@ app.get('/', (req, res) => {
 });
 
 // ── Config ───────────────────────────────────────────────────────────────────
-const configPath = path.join(__dirname, 'data', 'config.json');
-
-function lerConfig() {
-    try {
-        if (fs.existsSync(configPath)) return JSON.parse(fs.readFileSync(configPath, 'utf8'));
-    } catch (e) {}
-    return {
-        PORT_BP: parseInt(process.env.PORT_BP) || 6500,
-        PORT_TC: parseInt(process.env.PORT_TC) || 16510
-    };
-}
+const { lerConfig, configPath } = require('./services/config');
 
 app.get('/api/config', (req, res) => {
     res.json(lerConfig());
@@ -36,11 +26,12 @@ app.get('/api/config', (req, res) => {
 
 app.post('/api/config', (req, res) => {
     try {
-        const { PORT_BP, PORT_TC } = req.body;
+        const { PORT_BP, PORT_TC, IMPRESSORA_URL } = req.body;
         const atual = lerConfig();
         const nova = {
             PORT_BP: parseInt(PORT_BP) || atual.PORT_BP,
-            PORT_TC: parseInt(PORT_TC) || atual.PORT_TC
+            PORT_TC: parseInt(PORT_TC) || atual.PORT_TC,
+            IMPRESSORA_URL: IMPRESSORA_URL !== undefined ? String(IMPRESSORA_URL).trim() : atual.IMPRESSORA_URL
         };
         fs.mkdirSync(path.dirname(configPath), { recursive: true });
         fs.writeFileSync(configPath, JSON.stringify(nova, null, 2));
@@ -57,13 +48,14 @@ app.post('/api/imprimir-preco', async (req, res) => {
 
     res.json({ ok: true });
 
-    if (!process.env.IMPRESSORA_URL) {
+    const { IMPRESSORA_URL } = lerConfig();
+    if (!IMPRESSORA_URL) {
         console.warn(`[IMPRESSORA] IMPRESSORA_URL não configurada. Ignorando.`);
         return;
     }
 
     try {
-        const url = `${process.env.IMPRESSORA_URL}${codigo}`;
+        const url = `${IMPRESSORA_URL}${codigo}`;
         const result = await fetch(url);
         console.log(`[IMPRESSORA] ${codigo} → HTTP ${result.status}`);
     } catch (e) {

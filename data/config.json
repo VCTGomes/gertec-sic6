@@ -1,0 +1,5 @@
+{
+  "PORT_BP": 6500,
+  "PORT_TC": 16510,
+  "IMPRESSORA_URL": "http://10.20.0.100:4738/api/v1/imprimir/preco?barcode="
+}

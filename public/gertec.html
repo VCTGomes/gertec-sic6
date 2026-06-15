@@ -210,7 +210,7 @@
         <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col">
             <div class="bg-blue-700 px-5 py-4 flex justify-between items-center text-white shrink-0">
                 <h3 class="font-bold flex items-center gap-2">
-                    <i class="fa-solid fa-gear"></i> Configurações de Portas
+                    <i class="fa-solid fa-gear"></i> Configurações
                 </h3>
                 <button onclick="fecharModalConfig()" class="text-blue-200 hover:text-white bg-blue-800 hover:bg-blue-600 w-8 h-8 rounded-full flex items-center justify-center transition-colors">
                     <i class="fa-solid fa-xmark text-lg"></i>
@@ -219,7 +219,12 @@
             <div class="p-5 flex flex-col gap-4">
                 <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800 flex items-start gap-2">
                     <i class="fa-solid fa-triangle-exclamation mt-0.5 shrink-0"></i>
-                    <span>Alterar as portas requer reinicialização do servidor para ter efeito.</span>
+                    <span>Alterar as portas requer reinicialização do servidor. A impressora aplica imediatamente.</span>
+                </div>
+                <div class="flex flex-col gap-1">
+                    <label class="text-xs font-bold text-gray-600 uppercase">Impressora de Preços (URL)</label>
+                    <input type="text" id="inputImpressoraUrl" placeholder="http://10.20.0.100:4738/api/v1/imprimir/preco?barcode=" class="border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono">
+                    <span class="text-xs text-gray-400">O código de barras é anexado ao final da URL.</span>
                 </div>
                 <div class="flex flex-col gap-1">
                     <label class="text-xs font-bold text-gray-600 uppercase">Porta BP G2 (TCP)</label>
@@ -547,9 +552,11 @@
                 const data = await res.json();
                 document.getElementById('inputPortaBP').value = data.PORT_BP;
                 document.getElementById('inputPortaTC').value = data.PORT_TC;
+                document.getElementById('inputImpressoraUrl').value = data.IMPRESSORA_URL || '';
             } catch (e) {
                 document.getElementById('inputPortaBP').value = 6500;
                 document.getElementById('inputPortaTC').value = 16510;
+                document.getElementById('inputImpressoraUrl').value = '';
             }
             document.getElementById('modalConfig').classList.remove('hidden');
         }
@@ -567,7 +574,8 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         PORT_BP: document.getElementById('inputPortaBP').value,
-                        PORT_TC: document.getElementById('inputPortaTC').value
+                        PORT_TC: document.getElementById('inputPortaTC').value,
+                        IMPRESSORA_URL: document.getElementById('inputImpressoraUrl').value
                     })
                 });
                 const data = await res.json();

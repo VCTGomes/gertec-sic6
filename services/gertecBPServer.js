@@ -2,6 +2,7 @@ const net = require('net');
 const fs = require('fs');
 const path = require('path');
 const { buscarPrecoLocal: buscarPrecoSicweb } = require('../routes/produtos');
+const { lerConfig } = require('./config');
 
 const DB_PATH = path.join(__dirname, '../data/temp/bdTempLeitura.json');
 
@@ -85,9 +86,15 @@ async function imprimirEtiqueta(codigo, ip, io, logDebugCallback) {
         return false; // Retorna false em caso de erro
     }
     try {
-        const url = `${process.env.IMPRESSORA_URL}${codigo}`;
+        const { IMPRESSORA_URL } = lerConfig();
+        if (!IMPRESSORA_URL) {
+            logDebugCallback(ip, '[IMPRESSÃO/ERRO] URL da impressora não configurada.');
+            io.emit('statusImpressao', { sucesso: false, mensagem: 'Impressora não configurada.' });
+            return false;
+        }
+        const url = `${IMPRESSORA_URL}${codigo}`;
         const res = await fetch(url);
-        
+
         if (res.ok) {
             logDebugCallback(ip, `[IMPRESSÃO] Etiqueta ${codigo} enviada com sucesso!`);
             io.emit('statusImpressao', { sucesso: true, mensagem: `Etiqueta ${codigo} impressa!` }); 
