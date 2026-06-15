@@ -76,6 +76,17 @@ async function notificar(title, body, opts = {}) {
     }
 }
 
+// Push reverso: dispara um data-only `acao=limpar` para todos os dispositivos,
+// que então fecham suas notificações abertas ("marcar como lido" em todos os PCs).
+// Pequeno cooldown evita rajadas (ex.: vários PCs abrindo o painel ao mesmo tempo).
+async function marcarLido() {
+    return notificar('GERTEC', '', {
+        data: { acao: 'limpar' },
+        chaveCooldown: 'limpar',
+        cooldownMs: 1500
+    });
+}
+
 // Conta consultas por código (em memória, reinicia junto com o serviço).
 // A cada múltiplo de `limite` buscas do mesmo código, dispara uma notificação
 // com botão "Imprimir preço".
@@ -94,4 +105,4 @@ function contabilizarBusca(codigo, nome, limite, id) {
     }
 }
 
-module.exports = { registrarToken, removerTokens, notificar, contabilizarBusca, lerTokens };
+module.exports = { registrarToken, removerTokens, notificar, marcarLido, contabilizarBusca, lerTokens };

@@ -343,6 +343,9 @@
                     <button onclick="ativarNotificacoes()" id="btnAtivarPush" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-bold transition-colors flex items-center justify-center gap-2">
                         <i class="fa-solid fa-bell"></i> Ativar Notificações
                     </button>
+                    <button onclick="marcarComoLido()" id="btnMarcarLido" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-check-double"></i> Marcar como lido
+                    </button>
                     <button onclick="testarNotificacao()" id="btnTestePush" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2">
                         <i class="fa-solid fa-paper-plane"></i> Enviar teste
                     </button>
@@ -1038,16 +1041,24 @@
                 // Mensagens recebidas com a aba EM FOCO (o SW só trata segundo plano)
                 messaging.onMessage((payload) => {
                     const d = payload.data || {};
+                    // Push reverso "limpar": apenas fecha as notificações locais
+                    if (d.acao === 'limpar') {
+                        reg.getNotifications().then((ns) => ns.forEach((n) => n.close()));
+                        return;
+                    }
                     const opts = {
                         body: d.body || '',
                         icon: '/res/icons/icon_x512.png',
                         badge: '/res/icons/maskable_icon_x96.png',
                         data: d
                     };
+                    const actions = [];
                     if (d.acao === 'imprimir' && d.codigo) {
-                        opts.actions = [{ action: 'imprimir', title: '🖨️ Imprimir preço' }];
+                        actions.push({ action: 'imprimir', title: '🖨️ Imprimir preço' });
                         opts.requireInteraction = true;
                     }
+                    actions.push({ action: 'lido', title: '✓ Marcar como lido' });
+                    opts.actions = actions;
                     reg.showNotification(d.title || 'GERTEC', opts);
                 });
 
@@ -1069,6 +1080,21 @@
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fa-solid fa-bell"></i> Ativar Notificações';
+            }
+        }
+
+        // Limpa as notificações locais e dispara o push reverso que marca tudo
+        // como lido em todos os demais computadores.
+        async function marcarComoLido(silencioso) {
+            try {
+                if (swRegistration) {
+                    const ns = await swRegistration.getNotifications();
+                    ns.forEach((n) => n.close());
+                }
+                await fetch('/api/push/marcar-lido', { method: 'POST' });
+                if (!silencioso) msgPush('Marcado como lido em todos os dispositivos.', true);
+            } catch (e) {
+                if (!silencioso) msgPush('Erro ao marcar como lido: ' + e.message, false);
             }
         }
 

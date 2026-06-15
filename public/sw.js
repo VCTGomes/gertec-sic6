@@ -17,8 +17,23 @@ const messaging = firebase.messaging();
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));
 
+// Fecha todas as notificações abertas neste dispositivo
+function limparNotificacoes() {
+    return self.registration.getNotifications().then((ns) => ns.forEach((n) => n.close()));
+}
+
+// Push reverso: avisa o servidor para marcar tudo como lido nos demais PCs
+// e limpa as notificações locais deste dispositivo.
+function marcarTudoLido() {
+    return Promise.all([
+        fetch('/api/push/marcar-lido', { method: 'POST' }).catch(() => {}),
+        limparNotificacoes()
+    ]);
+}
+
 // Monta as opções da notificação a partir do `data` (mensagens data-only).
-// Se vier `acao=imprimir` com um código, adiciona o botão "Imprimir preço".
+// Toda notificação ganha o botão "Marcar como lido". Se vier `acao=imprimir`
+// com um código, o botão "Imprimir preço" fica lado a lado.
 function montarNotificacao(d) {
     const opts = {
         body: d.body || '',
@@ -26,16 +41,25 @@ function montarNotificacao(d) {
         badge: '/res/icons/maskable_icon_x96.png',
         data: d
     };
+    const actions = [];
     if (d.acao === 'imprimir' && d.codigo) {
-        opts.actions = [{ action: 'imprimir', title: '🖨️ Imprimir preço' }];
+        actions.push({ action: 'imprimir', title: '🖨️ Imprimir preço' });
         opts.requireInteraction = true;
     }
+    actions.push({ action: 'lido', title: '✓ Marcar como lido' });
+    opts.actions = actions;
     return [d.title || 'GERTEC', opts];
 }
 
 // Mensagens recebidas com a aba fechada / em segundo plano
 messaging.onBackgroundMessage((payload) => {
-    const [titulo, opts] = montarNotificacao(payload.data || {});
+    const d = payload.data || {};
+    // Push reverso "limpar": só fecha as notificações, não exibe nada
+    if (d.acao === 'limpar') {
+        limparNotificacoes();
+        return;
+    }
+    const [titulo, opts] = montarNotificacao(d);
     self.registration.showNotification(titulo, opts);
 });
 
@@ -43,15 +67,22 @@ self.addEventListener('notificationclick', (event) => {
     const d = event.notification.data || {};
     event.notification.close();
 
-    // Botão "Imprimir preço" → chama a API de impressão do app (mesma origem)
+    // Botão "Marcar como lido" → limpa em todos os PCs (push reverso)
+    if (event.action === 'lido') {
+        event.waitUntil(marcarTudoLido());
+        return;
+    }
+
+    // Botão "Imprimir preço" → imprime e também marca como lido nos demais PCs
     if (event.action === 'imprimir' && d.codigo) {
-        event.waitUntil(
+        event.waitUntil(Promise.all([
             fetch('/api/imprimir-preco', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ codigo: d.codigo, id: d.id })
-            }).catch(() => {})
-        );
+            }).catch(() => {}),
+            marcarTudoLido()
+        ]));
         return;
     }
 

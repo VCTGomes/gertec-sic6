@@ -137,6 +137,11 @@ app.post('/api/push/test', async (req, res) => {
     res.json(await push.notificar('GERTEC — Teste', 'Notificações funcionando! 🎉'));
 });
 
+// Push reverso: marca tudo como lido (limpa notificações) em todos os PCs
+app.post('/api/push/marcar-lido', async (req, res) => {
+    res.json(await push.marcarLido());
+});
+
 // ── Serviços TCP ─────────────────────────────────────────────────────────────
 require('./services/gertecBPServer')(io);
 require('./services/gertecTC506Server')(io);
