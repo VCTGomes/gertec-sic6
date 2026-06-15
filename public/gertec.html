@@ -29,6 +29,18 @@
                 align-self: start;
             }
         }
+        /* Animação de abertura/fechamento dos modais */
+        .modal-overlay { opacity: 0; transition: opacity .2s ease; }
+        .modal-overlay.is-open { opacity: 1; }
+        .modal-overlay .modal-panel {
+            transform: scale(.96) translateY(8px);
+            transition: transform .2s ease, opacity .2s ease;
+            opacity: 0;
+        }
+        .modal-overlay.is-open .modal-panel { transform: scale(1) translateY(0); opacity: 1; }
+        @media (prefers-reduced-motion: reduce) {
+            .modal-overlay, .modal-overlay .modal-panel { transition: none; }
+        }
     </style>
 
     <!-- Notificações Push (Firebase Cloud Messaging) -->
@@ -61,9 +73,9 @@
                 </div>
             </div>
             <div class="flex items-center gap-2">
-                <span id="qtdTerminais" class="bg-blue-800 text-blue-100 text-xs font-bold px-2.5 py-1 rounded-full">0</span>
-                <button onclick="abrirModalConfig()" class="wco-no-drag bg-blue-800 hover:bg-blue-600 transition-colors p-2 rounded-lg flex items-center justify-center" title="Configurações">
-                    <i class="fa-solid fa-gear text-sm text-blue-200"></i>
+                <button onclick="abrirModalConfig()" class="wco-no-drag bg-blue-800 hover:bg-blue-600 transition-colors px-3 py-1.5 rounded-lg text-blue-200 hover:text-white flex items-center gap-2" title="Ajustes">
+                    <i class="fa-solid fa-gear text-sm"></i>
+                    <span class="text-sm font-bold">Ajustes</span>
                 </button>
             </div>
         </div>
@@ -187,17 +199,25 @@
     </div>
 
     <!-- Modal Mídias -->
-    <div id="modalMidia" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-opacity">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
-            <div class="bg-blue-700 px-5 py-4 flex justify-between items-center text-white shrink-0 shadow-md z-20">
-                <h3 class="font-bold flex items-center gap-2 text-lg">
-                    <i class="fa-solid fa-images"></i> Gerenciador de Mídias
-                    <span id="ipModalMidia" class="bg-blue-900 text-blue-100 font-mono text-xs px-2 py-0.5 rounded ml-2"></span>
-                    <span id="tipoModalMidia" class="bg-emerald-500 text-white font-mono text-xs px-2 py-0.5 rounded ml-1"></span>
-                </h3>
-                <button onclick="fecharModalMidia()" class="text-blue-200 hover:text-white transition-colors bg-blue-800 hover:bg-blue-600 w-8 h-8 rounded-full flex items-center justify-center">
-                    <i class="fa-solid fa-xmark text-lg"></i>
-                </button>
+    <div id="modalMidia" class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style="background-color: rgba(17, 24, 39, 0.5);">
+        <div class="modal-panel bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="bg-blue-700 text-white p-4 shrink-0 shadow-md z-20">
+                <div class="flex justify-between items-center gap-3">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <h2 class="font-black text-xl leading-tight flex items-center gap-2"><i class="fa-solid fa-images"></i> Gerenciador de Mídias</h2>
+                                <span id="ipModalMidia" class="inline-flex items-center bg-blue-900 text-blue-100 font-mono text-xs leading-none px-2 py-1 rounded"></span>
+                                <span id="tipoModalMidia" class="inline-flex items-center bg-emerald-500 text-white font-mono text-xs leading-none px-2 py-1 rounded"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <button onclick="fecharModalMidia()" class="text-blue-300 hover:text-white transition p-2">
+                            <i class="fa-solid fa-xmark text-xl"></i>
+                        </button>
+                    </div>
+                </div>
             </div>
             <div class="flex border-b border-gray-200 bg-gray-50 text-sm z-10 shrink-0">
                 <button id="tabBtn_arquivos" onclick="mudarAba('arquivos')" class="flex-1 py-3.5 font-bold border-b-2 border-blue-600 text-blue-700 transition-colors flex justify-center items-center gap-2">
@@ -251,16 +271,24 @@
     </div>
 
     <!-- Modal Debug -->
-    <div id="modalDebug" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 z-[60] flex items-center justify-center p-4 backdrop-blur-sm transition-opacity">
-        <div class="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col">
-            <div class="bg-gray-800 px-4 py-3 flex justify-between items-center border-b border-gray-700 shrink-0">
-                <h3 class="text-emerald-400 font-mono text-sm font-bold flex items-center gap-2">
-                    <i class="fa-solid fa-terminal"></i> Terminal de Debug
-                    <span id="ipModalDebug" class="bg-gray-700 text-gray-300 px-2 py-0.5 rounded ml-2 text-xs"></span>
-                </h3>
-                <button onclick="fecharModalDebug()" class="text-gray-400 hover:text-white transition-colors">
-                    <i class="fa-solid fa-xmark text-lg"></i>
-                </button>
+    <div id="modalDebug" class="modal-overlay hidden fixed inset-0 z-[60] flex items-center justify-center p-4 backdrop-blur-sm" style="background-color: rgba(17, 24, 39, 0.6);">
+        <div class="modal-panel bg-gray-950 border border-gray-700 rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col">
+            <div class="bg-gray-900 text-white p-4 shrink-0 border-b border-gray-700">
+                <div class="flex justify-between items-center gap-3">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <h2 class="font-black text-xl leading-tight flex items-center gap-2 font-mono"><i class="fa-solid fa-terminal text-emerald-400"></i> Terminal de Debug</h2>
+                                <span id="ipModalDebug" class="inline-flex items-center bg-gray-800 text-gray-300 font-mono text-xs leading-none px-2 py-1 rounded"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <button onclick="fecharModalDebug()" class="text-gray-400 hover:text-white transition p-2">
+                            <i class="fa-solid fa-xmark text-xl"></i>
+                        </button>
+                    </div>
+                </div>
             </div>
             <div id="debugLogsContainer" class="p-4 h-80 overflow-y-auto font-mono text-xs flex flex-col gap-1.5 bg-gray-950 text-gray-300">
                 <div id="placeholderDebug" class="text-gray-600 italic text-center mt-4">Aguardando comandos deste terminal...</div>
@@ -269,15 +297,21 @@
     </div>
 
     <!-- Modal Config -->
-    <div id="modalConfig" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-opacity">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm max-h-[90vh] overflow-hidden flex flex-col">
-            <div class="bg-blue-700 px-5 py-4 flex justify-between items-center text-white shrink-0">
-                <h3 class="font-bold flex items-center gap-2">
-                    <i class="fa-solid fa-gear"></i> Configurações
-                </h3>
-                <button onclick="fecharModalConfig()" class="text-blue-200 hover:text-white bg-blue-800 hover:bg-blue-600 w-8 h-8 rounded-full flex items-center justify-center transition-colors">
-                    <i class="fa-solid fa-xmark text-lg"></i>
-                </button>
+    <div id="modalConfig" class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style="background-color: rgba(17, 24, 39, 0.5);">
+        <div class="modal-panel bg-white rounded-xl shadow-2xl w-full max-w-sm max-h-[90vh] overflow-hidden flex flex-col">
+            <div class="bg-blue-700 text-white p-4 shrink-0">
+                <div class="flex justify-between items-center gap-3">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="min-w-0">
+                            <h2 class="font-black text-xl leading-tight flex items-center gap-2"><i class="fa-solid fa-gear"></i> Ajustes</h2>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <button onclick="fecharModalConfig()" class="text-blue-300 hover:text-white transition p-2">
+                            <i class="fa-solid fa-xmark text-xl"></i>
+                        </button>
+                    </div>
+                </div>
             </div>
             <div class="p-5 flex flex-col gap-4 overflow-y-auto">
                 <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800 flex items-start gap-2">
@@ -318,7 +352,7 @@
 
                 <div id="msgConfig" class="hidden text-xs font-semibold text-center py-2 rounded-lg"></div>
                 <button onclick="salvarConfig()" id="btnSalvarConfig" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-bold transition-colors flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-floppy-disk"></i> Salvar Configurações
+                    <i class="fa-solid fa-floppy-disk"></i> Salvar Ajustes
                 </button>
             </div>
         </div>
@@ -340,7 +374,6 @@
 
         function renderizarTerminais() {
             const terminais = [...listaBP.map(t => ({...t, tipo: 'BP'})), ...listaTC.map(t => ({...t, tipo: 'TC'}))];
-            document.getElementById('qtdTerminais').innerText = terminais.length;
             document.getElementById('qtdTerminaisCard').innerText = terminais.length;
             const container = document.getElementById('listaTerminais');
             if (terminais.length === 0) {
@@ -475,14 +508,39 @@
             mudarAbaMain((e.state && e.state.aba) || abaDaURL(), false);
         });
 
+        // ── Abertura/fechamento animado de modais ───────────────────────────
+        function abrirModalEl(id) {
+            const m = document.getElementById(id);
+            if (!m) return;
+            m.classList.remove('hidden');
+            // Próximo frame: garante o estado inicial antes de transicionar
+            requestAnimationFrame(() => m.classList.add('is-open'));
+        }
+        function fecharModalEl(id) {
+            const m = document.getElementById(id);
+            if (!m || m.classList.contains('hidden')) return;
+            m.classList.remove('is-open');
+            const fim = (e) => { if (e && e.target !== m) return; m.classList.add('hidden'); m.removeEventListener('transitionend', fim); };
+            m.addEventListener('transitionend', fim);
+            setTimeout(fim, 250); // fallback se transitionend não disparar
+        }
+
+        // ESC fecha o modal aberto de maior prioridade (Debug fica acima dos demais)
+        document.addEventListener('keydown', (e) => {
+            if (e.key !== 'Escape') return;
+            if (!document.getElementById('modalDebug').classList.contains('hidden')) return fecharModalDebug();
+            if (!document.getElementById('modalMidia').classList.contains('hidden')) return fecharModalMidia();
+            if (!document.getElementById('modalConfig').classList.contains('hidden')) return fecharModalConfig();
+        });
+
         function abrirModalDebug(ip) {
             ipDebugAtual = ip;
             document.getElementById('ipModalDebug').innerText = ip;
-            document.getElementById('modalDebug').classList.remove('hidden');
+            abrirModalEl('modalDebug');
             renderizarLogsDebug();
         }
 
-        function fecharModalDebug() { document.getElementById('modalDebug').classList.add('hidden'); ipDebugAtual = null; }
+        function fecharModalDebug() { fecharModalEl('modalDebug'); ipDebugAtual = null; }
 
         function renderizarLogsDebug() {
             const container = document.getElementById('debugLogsContainer');
@@ -523,10 +581,10 @@
             document.getElementById('containerListaArquivos').innerHTML = '<div class="text-center text-gray-400 py-8 text-sm">Clique em "Ler Memória" para visualizar.</div>';
             document.getElementById('previewMidiaContainer').classList.add('hidden');
             mudarAba('arquivos');
-            document.getElementById('modalMidia').classList.remove('hidden');
+            abrirModalEl('modalMidia');
         }
 
-        function fecharModalMidia() { document.getElementById('modalMidia').classList.add('hidden'); }
+        function fecharModalMidia() { fecharModalEl('modalMidia'); }
 
         function msg(texto, cor) {
             const cores = {
@@ -906,10 +964,10 @@
                 document.getElementById('inputImpressoraUrl').value = '';
                 document.getElementById('inputBuscasLimite').value = 10;
             }
-            document.getElementById('modalConfig').classList.remove('hidden');
+            abrirModalEl('modalConfig');
         }
 
-        function fecharModalConfig() { document.getElementById('modalConfig').classList.add('hidden'); }
+        function fecharModalConfig() { fecharModalEl('modalConfig'); }
 
         async function salvarConfig() {
             const btn = document.getElementById('btnSalvarConfig');
@@ -937,7 +995,7 @@
                 msgEl.classList.remove('hidden');
             } finally {
                 btn.disabled = false;
-                btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Salvar Configurações';
+                btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Salvar Ajustes';
             }
         }
 
