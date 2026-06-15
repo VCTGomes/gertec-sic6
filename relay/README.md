@@ -2,23 +2,23 @@
 
 Relay de notificações push via **Firebase Cloud Messaging (FCM)**.
 
-O service account do Firebase fica **apenas neste serviço** (na sua Oracle), nunca no
-repositório público do GERTEC. As instâncias do app só conhecem a **URL do webhook** e a
-**chave compartilhada** (`RELAY_SECRET`), guardadas no `config.json` local de cada uma.
+O relay é **stateless**: ele guarda apenas a credencial do Google (service account, na sua
+Oracle) e **encaminha** o push pro FCM. Quem armazena os tokens dos dispositivos é o **app
+GERTEC** (na máquina de cada instalação), que envia os tokens-alvo no corpo do `/notify`.
 
 ```
-App GERTEC ──POST /notify (Bearer RELAY_SECRET)──▶ Relay (Oracle) ──FCM──▶ navegadores/PWA
-Navegador  ──POST /register {token}──────────────▶ Relay
+App GERTEC ──POST /notify (Bearer RELAY_SECRET) { tokens, title, body }──▶ Relay (Oracle) ──FCM──▶ navegadores/PWA
 ```
 
 ## Endpoints
 
-| Método | Rota          | Auth            | Descrição                                  |
-|--------|---------------|-----------------|--------------------------------------------|
-| GET    | `/health`     | —               | Status + nº de dispositivos                |
-| POST   | `/register`   | —               | `{ token }` — registra um device FCM       |
-| POST   | `/unregister` | —               | `{ token }` — remove um device             |
-| POST   | `/notify`     | Bearer secret   | `{ title, body, data }` — dispara o push   |
+| Método | Rota       | Auth          | Descrição                                                  |
+|--------|------------|---------------|------------------------------------------------------------|
+| GET    | `/health`  | —             | Status do serviço                                          |
+| POST   | `/notify`  | Bearer secret | `{ tokens, title, body, data }` — encaminha o push pro FCM |
+
+O `/notify` devolve `{ enviados, falhas, invalidos }`. O array `invalidos` lista os tokens
+que o FCM rejeitou (expirados/inexistentes) para o app removê-los do seu armazenamento.
 
 ## Deploy na Oracle Linux
 
@@ -29,7 +29,7 @@ sudo mkdir -p /opt/gertec-relay && cd /opt/gertec-relay
 npm install --omit=dev
 
 # segredos (não versionados)
-mkdir -p certs data
+mkdir -p certs
 cp /caminho/firebase-sa.json certs/firebase-sa.json   # baixado do console Firebase
 cp .env.example .env
 nano .env                                             # defina RELAY_SECRET etc.
@@ -65,8 +65,7 @@ sudo iptables -I INPUT 5 -p tcp --dport 8787 -j ACCEPT
 
 O `updater.js` escuta um webhook do GitHub (`POST /webhook`, porta 9001) e, a cada push,
 faz `git reset --hard origin/main`, `npm install` e `systemctl restart gertec-relay`.
-Os segredos (`certs/`, `data/`, `.env`) são ignorados pelo git e **preservados** no
-`git clean -fd`.
+Os segredos (`certs/`, `.env`) são ignorados pelo git e **preservados** no `git clean -fd`.
 
 ```bash
 sudo cp gertec-relay-updater.service /etc/systemd/system/
@@ -89,5 +88,5 @@ curl -s localhost:8787/health
 curl -s -X POST localhost:8787/notify \
   -H "Authorization: Bearer SEU_RELAY_SECRET" \
   -H "Content-Type: application/json" \
-  -d '{"title":"Teste","body":"Funcionou!"}'
+  -d '{"tokens":["TOKEN_FCM_DO_NAVEGADOR"],"title":"Teste","body":"Funcionou!"}'
 ```

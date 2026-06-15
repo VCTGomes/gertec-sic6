@@ -6,15 +6,10 @@ const fs      = require('fs');
 const admin   = require('firebase-admin');
 
 // ── Configuração via ambiente ──────────────────────────────────────────────────
-const PORT          = parseInt(process.env.PORT) || 8787;
-const RELAY_SECRET  = process.env.RELAY_SECRET || '';
-const CRED_PATH     = process.env.GOOGLE_APPLICATION_CREDENTIALS || path.join(__dirname, 'certs', 'firebase-sa.json');
-const TOKENS_PATH   = process.env.TOKENS_PATH || path.join(__dirname, 'data', 'tokens.json');
+const PORT         = parseInt(process.env.PORT) || 8787;
+const RELAY_SECRET = process.env.RELAY_SECRET || ''; // vazio = /notify aberto (não recomendado)
+const CRED_PATH    = process.env.GOOGLE_APPLICATION_CREDENTIALS || path.join(__dirname, 'certs', 'firebase-sa.json');
 
-if (!RELAY_SECRET) {
-    console.error('[FATAL] RELAY_SECRET não definido. Configure o .env antes de subir.');
-    process.exit(1);
-}
 if (!fs.existsSync(CRED_PATH)) {
     console.error(`[FATAL] Service account não encontrado em ${CRED_PATH}.`);
     process.exit(1);
@@ -26,27 +21,13 @@ admin.initializeApp({
 });
 const messaging = admin.messaging();
 
-// ── Armazenamento simples dos tokens dos dispositivos (arquivo JSON) ────────────
-function lerTokens() {
-    try {
-        return new Set(JSON.parse(fs.readFileSync(TOKENS_PATH, 'utf8')));
-    } catch {
-        return new Set();
-    }
-}
-function salvarTokens(set) {
-    fs.mkdirSync(path.dirname(TOKENS_PATH), { recursive: true });
-    fs.writeFileSync(TOKENS_PATH, JSON.stringify([...set], null, 2));
-}
-
-let tokens = lerTokens();
-
 // ── App ────────────────────────────────────────────────────────────────────────
 const app = express();
 app.use(express.json());
 
-// Exige o segredo compartilhado (Authorization: Bearer <RELAY_SECRET>)
+// Exige o segredo compartilhado (Authorization: Bearer <RELAY_SECRET>), se configurado
 function exigeSegredo(req, res, next) {
+    if (!RELAY_SECRET) return next();
     const auth = req.get('authorization') || '';
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
     if (token !== RELAY_SECRET) return res.status(401).json({ erro: 'não autorizado' });
@@ -54,64 +35,54 @@ function exigeSegredo(req, res, next) {
 }
 
 app.get('/health', (req, res) => {
-    res.json({ ok: true, dispositivos: tokens.size });
+    res.json({ ok: true, protegido: Boolean(RELAY_SECRET) });
 });
 
-// Cada navegador/PWA registra aqui o seu token do FCM
-app.post('/register', (req, res) => {
-    const { token } = req.body || {};
-    if (!token || typeof token !== 'string') {
-        return res.status(400).json({ erro: 'token ausente' });
-    }
-    if (!tokens.has(token)) {
-        tokens.add(token);
-        salvarTokens(tokens);
-    }
-    res.json({ ok: true });
-});
+// Divide um array em lotes de tamanho n (FCM aceita no máx. 500 tokens por chamada)
+function emLotes(arr, n) {
+    const out = [];
+    for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n));
+    return out;
+}
 
-// Remove um token (ex.: ao desativar notificações no front)
-app.post('/unregister', (req, res) => {
-    const { token } = req.body || {};
-    if (token && tokens.delete(token)) salvarTokens(tokens);
-    res.json({ ok: true });
-});
-
-// Webhook: dispara a notificação para todos os dispositivos registrados
+// Webhook stateless: o caller (app GERTEC) envia os tokens-alvo no corpo.
+// Body: { tokens: string | string[], title, body, data }
 app.post('/notify', exigeSegredo, async (req, res) => {
-    const { title, body, data } = req.body || {};
-    if (!title && !body) {
-        return res.status(400).json({ erro: 'informe ao menos title ou body' });
-    }
-    const alvos = [...tokens];
-    if (alvos.length === 0) {
-        return res.json({ ok: true, enviados: 0, falhas: 0, aviso: 'nenhum dispositivo registrado' });
-    }
+    const { tokens, title, body, data } = req.body || {};
+
+    const alvos = (Array.isArray(tokens) ? tokens : [tokens])
+        .filter(t => typeof t === 'string' && t.length);
+
+    if (alvos.length === 0) return res.status(400).json({ erro: 'informe ao menos um token' });
+    if (!title && !body)    return res.status(400).json({ erro: 'informe ao menos title ou body' });
 
     try {
-        const resp = await messaging.sendEachForMulticast({
-            tokens: alvos,
-            notification: { title: title || '', body: body || '' },
-            data: data && typeof data === 'object' ? data : undefined
-        });
+        let enviados = 0, falhas = 0;
+        const invalidos = [];
 
-        // Limpa tokens que o FCM reportou como inválidos/expirados
-        const remover = [];
-        resp.responses.forEach((r, i) => {
-            if (!r.success) {
-                const code = r.error?.code || '';
-                if (code === 'messaging/registration-token-not-registered' ||
-                    code === 'messaging/invalid-registration-token') {
-                    remover.push(alvos[i]);
+        for (const lote of emLotes(alvos, 500)) {
+            const resp = await messaging.sendEachForMulticast({
+                tokens: lote,
+                notification: { title: title || '', body: body || '' },
+                data: data && typeof data === 'object' ? data : undefined
+            });
+            enviados += resp.successCount;
+            falhas   += resp.failureCount;
+
+            // Reporta de volta quais tokens o FCM considera inválidos/expirados,
+            // para o caller removê-los do seu próprio armazenamento.
+            resp.responses.forEach((r, i) => {
+                if (!r.success) {
+                    const code = r.error?.code || '';
+                    if (code === 'messaging/registration-token-not-registered' ||
+                        code === 'messaging/invalid-registration-token') {
+                        invalidos.push(lote[i]);
+                    }
                 }
-            }
-        });
-        if (remover.length) {
-            remover.forEach(t => tokens.delete(t));
-            salvarTokens(tokens);
+            });
         }
 
-        res.json({ ok: true, enviados: resp.successCount, falhas: resp.failureCount, removidos: remover.length });
+        res.json({ ok: true, enviados, falhas, invalidos });
     } catch (e) {
         console.error('[notify] erro:', e.message);
         res.status(500).json({ erro: e.message });
@@ -119,5 +90,5 @@ app.post('/notify', exigeSegredo, async (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`GERTEC relay ouvindo na porta ${PORT} — ${tokens.size} dispositivo(s) registrado(s)`);
+    console.log(`GERTEC relay ouvindo na porta ${PORT} — /notify ${RELAY_SECRET ? 'protegido' : 'ABERTO (sem RELAY_SECRET)'}`);
 });

@@ -58,7 +58,7 @@ async function executarAtualizacao() {
 
         log(`[git] Nova versão detectada: ${localSha.slice(0, 7)} -> ${remoteSha.slice(0, 7)}`);
 
-        // 2. Aplica as mudanças de forma limpa (certs/, data/ e .env são ignorados e preservados)
+        // 2. Aplica as mudanças de forma limpa (certs/ e .env são ignorados e preservados)
         log('[git] Resetando arquivos para o estado do repositório...');
         execSync(`git reset --hard origin/${BRANCH}`, { cwd: ROOT });
         execSync(`git clean -fd`, { cwd: ROOT });
