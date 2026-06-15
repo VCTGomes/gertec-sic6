@@ -85,6 +85,9 @@
                 <button id="tabMainBtn_ranking" onclick="mudarAbaMain('ranking')" class="flex-1 py-3.5 font-bold border-b-2 border-transparent text-gray-500 hover:text-blue-600 transition-colors flex justify-center items-center gap-2">
                     <i class="fa-solid fa-chart-column"></i> Mais Buscados
                 </button>
+                <button id="tabMainBtn_leitores" onclick="mudarAbaMain('leitores')" class="flex-1 py-3.5 font-bold border-b-2 border-transparent text-gray-500 hover:text-blue-600 transition-colors flex justify-center items-center gap-2">
+                    <i class="fa-solid fa-chart-simple"></i> Leitores Mais Usados
+                </button>
             </div>
 
             <div id="tabMain_leituras" class="flex flex-col">
@@ -135,6 +138,37 @@
                             <tr><td colspan="6" class="text-center py-12 text-gray-400">Aguardando dados...</td></tr>
                         </tbody>
                     </table>
+                </div>
+            </div>
+
+            <div id="tabMain_leitores" class="hidden flex-col">
+                <div class="px-4 sm:px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white">
+                    <h3 class="font-semibold text-gray-700">Leitores Mais Usados</h3>
+                    <span class="text-xs text-gray-400 hidden sm:inline">Clique em um leitor para filtrar os produtos</span>
+                </div>
+                <div id="graficoLeitores" class="p-4 sm:p-6 flex flex-col gap-3">
+                    <div class="text-center py-12 text-gray-400">Aguardando dados...</div>
+                </div>
+
+                <div id="leitorRankingWrap" class="hidden flex-col border-t border-gray-100">
+                    <div class="px-4 sm:px-6 py-4 flex items-center bg-gray-50">
+                        <h3 class="font-semibold text-gray-700 truncate">Mais buscados por <span id="leitorFiltroNome" class="text-blue-700"></span></h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm text-gray-600 min-w-[700px]">
+                            <thead class="bg-gray-50 text-gray-700 text-xs uppercase font-semibold">
+                                <tr>
+                                    <th class="px-4 py-4 border-b border-gray-100 text-center w-12">Nº</th>
+                                    <th class="px-4 py-4 border-b border-gray-100">Código</th>
+                                    <th class="px-4 py-4 border-b border-gray-100">Produto</th>
+                                    <th class="px-4 py-4 border-b border-gray-100">Preço (R$)</th>
+                                    <th class="px-4 py-4 border-b border-gray-100 text-center">Acessos</th>
+                                    <th class="px-4 py-4 border-b border-gray-100 text-center">Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabelaLeitorRanking" class="divide-y divide-gray-100"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -403,10 +437,10 @@
         }
 
         function mudarAbaMain(aba) {
-            document.getElementById('tabMain_leituras').classList.add('hidden');
-            document.getElementById('tabMain_ranking').classList.add('hidden');
-            document.getElementById('tabMainBtn_leituras').className = "flex-1 py-3.5 font-bold border-b-2 border-transparent text-gray-500 hover:text-blue-600 transition-colors flex justify-center items-center gap-2";
-            document.getElementById('tabMainBtn_ranking').className = "flex-1 py-3.5 font-bold border-b-2 border-transparent text-gray-500 hover:text-blue-600 transition-colors flex justify-center items-center gap-2";
+            ['leituras', 'ranking', 'leitores'].forEach(a => {
+                document.getElementById(`tabMain_${a}`).classList.add('hidden');
+                document.getElementById(`tabMainBtn_${a}`).className = "flex-1 py-3.5 font-bold border-b-2 border-transparent text-gray-500 hover:text-blue-600 transition-colors flex justify-center items-center gap-2";
+            });
             document.getElementById(`tabMain_${aba}`).classList.remove('hidden');
             document.getElementById(`tabMainBtn_${aba}`).classList.replace('border-transparent', 'border-blue-600');
             document.getElementById(`tabMainBtn_${aba}`).classList.replace('text-gray-500', 'text-blue-700');
@@ -600,6 +634,7 @@
             }
             tbody.innerHTML = '';
             historicoCompleto.forEach(l => renderizarLeitura(l, false));
+            calcularLeitores();
         }
 
         function renderizarLeitura(leitura, animar = false) {
@@ -625,19 +660,20 @@
             if (animar) setTimeout(() => tr.classList.remove('bg-emerald-50'), 1500);
         }
 
-        function calcularRanking() {
+        // Agrupa leituras por código de produto, ordenado por nº de acessos (desc).
+        function agruparProdutos(leituras) {
             const contagem = {};
-            historicoCompleto.forEach(l => {
+            leituras.forEach(l => {
                 if (!contagem[l.codigo]) contagem[l.codigo] = { codigo: l.codigo, nome: l.nome, preco: l.preco, qtd: 0, erro: (l.status === 'erro' || l.nome === '❌ NÃO ENCONTRADO') };
                 contagem[l.codigo].qtd++;
                 if (contagem[l.codigo].erro && l.status === 'ok') { contagem[l.codigo].nome = l.nome; contagem[l.codigo].preco = l.preco; contagem[l.codigo].erro = false; }
             });
-            const ranking = Object.values(contagem).sort((a, b) => b.qtd - a.qtd);
-            const tbody = document.getElementById('tabelaRanking');
-            if (ranking.length === 0) { tbody.innerHTML = '<tr><td colspan="6" class="text-center py-12 text-gray-400">Nenhum dado para o ranking.</td></tr>'; return; }
-            tbody.innerHTML = ranking.map((item, index) => {
-                const corNome = item.erro ? 'text-red-600 font-bold' : 'text-gray-900 font-medium';
-                return `
+            return Object.values(contagem).sort((a, b) => b.qtd - a.qtd);
+        }
+
+        function linhaRankingProduto(item, index) {
+            const corNome = item.erro ? 'text-red-600 font-bold' : 'text-gray-900 font-medium';
+            return `
                 <tr class="hover:bg-gray-50 border-b border-gray-50">
                     <td class="px-4 py-4 text-center font-bold text-gray-400">#${index + 1}</td>
                     <td class="px-4 py-4 font-mono text-gray-600">${item.codigo}</td>
@@ -650,7 +686,82 @@
                         </button>
                     </td>
                 </tr>`;
+        }
+
+        function calcularRanking() {
+            const ranking = agruparProdutos(historicoCompleto);
+            const tbody = document.getElementById('tabelaRanking');
+            if (ranking.length === 0) { tbody.innerHTML = '<tr><td colspan="6" class="text-center py-12 text-gray-400">Nenhum dado para o ranking.</td></tr>'; return; }
+            tbody.innerHTML = ranking.map(linhaRankingProduto).join('');
+        }
+
+        // ── Leitores Mais Usados ────────────────────────────────────────────
+        let leitorFiltro = null;     // chave do leitor selecionado para filtro
+        let leitoresAtuais = [];     // ranking de leitores renderizado (para clique)
+
+        function chaveLeitor(l) { return l.serial || l.terminal || '—'; }
+
+        function nomeLeitor(l) {
+            const ap = l.serial ? apelidos[l.serial] : null;
+            if (ap) return ap;
+            return (l.terminal || 'Desconhecido').replace(/\s*\([^)]*\)\s*$/, '').trim() || (l.terminal || 'Desconhecido');
+        }
+
+        function calcularLeitores() {
+            const cont = {};
+            historicoCompleto.filter(l => l.serial).forEach(l => {
+                const k = chaveLeitor(l);
+                if (!cont[k]) cont[k] = { chave: k, nome: nomeLeitor(l), tipo: /TC-?506/i.test(l.terminal || '') ? 'TC' : 'BP', qtd: 0 };
+                cont[k].nome = nomeLeitor(l); // mantém apelido atualizado
+                cont[k].qtd++;
+            });
+            leitoresAtuais = Object.values(cont).sort((a, b) => b.qtd - a.qtd);
+            const container = document.getElementById('graficoLeitores');
+            if (!leitoresAtuais.length) {
+                container.innerHTML = '<div class="text-center py-12 text-gray-400">Nenhum dado disponível.</div>';
+                leitorFiltro = null;
+                document.getElementById('leitorRankingWrap').classList.add('hidden');
+                return;
+            }
+            const max = leitoresAtuais[0].qtd;
+            container.innerHTML = leitoresAtuais.map((item, idx) => {
+                const pct = Math.max(4, Math.round((item.qtd / max) * 100));
+                const ativo = leitorFiltro === item.chave;
+                const iconCls = item.tipo === 'TC' ? 'term-icon--tc506' : 'term-icon--buscapreco';
+                return `
+                <button onclick="selecionarLeitor(${idx})" class="w-full text-left focus:outline-none">
+                    <div class="flex items-center justify-between text-sm mb-1">
+                        <span class="font-semibold ${ativo ? 'text-blue-700' : 'text-gray-700'} flex items-center gap-1.5 truncate mr-2">
+                            <span class="term-icon ${iconCls} text-blue-500"></span>${item.nome}
+                        </span>
+                        <span class="shrink-0 text-xs font-bold ${ativo ? 'text-blue-700' : 'text-gray-500'}">${item.qtd} leitura${item.qtd > 1 ? 's' : ''}</span>
+                    </div>
+                    <div class="w-full rounded-md overflow-hidden" style="height:1.5rem;background:#e5e7eb;">
+                        <div class="rounded-md" style="height:100%;width:${pct}%;background:${ativo ? '#2563eb' : '#60a5fa'};transition:width .3s,background .2s;"></div>
+                    </div>
+                </button>`;
             }).join('');
+            if (leitorFiltro && cont[leitorFiltro]) renderizarRankingLeitor();
+            else { leitorFiltro = null; document.getElementById('leitorRankingWrap').classList.add('hidden'); }
+        }
+
+        function selecionarLeitor(idx) {
+            const item = leitoresAtuais[idx];
+            if (!item) return;
+            leitorFiltro = (leitorFiltro === item.chave) ? null : item.chave; // alterna
+            calcularLeitores();
+        }
+
+        function renderizarRankingLeitor() {
+            const item = leitoresAtuais.find(x => x.chave === leitorFiltro);
+            const wrap = document.getElementById('leitorRankingWrap');
+            document.getElementById('leitorFiltroNome').innerText = item ? item.nome : '';
+            const ranking = agruparProdutos(historicoCompleto.filter(l => chaveLeitor(l) === leitorFiltro));
+            const tbody = document.getElementById('tabelaLeitorRanking');
+            tbody.innerHTML = ranking.length
+                ? ranking.map(linhaRankingProduto).join('')
+                : '<tr><td colspan="6" class="text-center py-12 text-gray-400">Nenhuma leitura deste leitor.</td></tr>';
+            wrap.classList.remove('hidden');
         }
 
         socket.on('historicoLeituras', (h) => {
@@ -658,6 +769,7 @@
             document.getElementById('tabelaLeituras').innerHTML = historicoCompleto.length ? '' : '<tr id="linhaVazia"><td colspan="6" class="text-center py-12 text-gray-400">Nenhuma leitura registrada.</td></tr>';
             historicoCompleto.forEach(l => renderizarLeitura(l, false));
             calcularRanking();
+            calcularLeitores();
         });
 
         socket.on('novaLeitura', (l) => {
@@ -665,6 +777,7 @@
             if (historicoCompleto.length > 200) historicoCompleto.shift();
             renderizarLeitura(l, true);
             calcularRanking();
+            calcularLeitores();
         });
 
         // ── Config ──────────────────────────────────────────────────────────
