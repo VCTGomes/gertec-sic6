@@ -17,9 +17,11 @@ const messaging = firebase.messaging();
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));
 
-// Fecha todas as notificações abertas neste dispositivo
-function limparNotificacoes() {
-    return self.registration.getNotifications().then((ns) => ns.forEach((n) => n.close()));
+// Fecha notificações abertas neste dispositivo. Com `tag`, fecha SÓ a notificação
+// correspondente (limpeza direcionada); sem `tag`, fecha todas ("marcar tudo como lido").
+function limparNotificacoes(tag) {
+    const filtro = tag ? { tag: String(tag) } : undefined;
+    return self.registration.getNotifications(filtro).then((ns) => ns.forEach((n) => n.close()));
 }
 
 // Push reverso: avisa o servidor para marcar tudo como lido nos demais PCs
@@ -68,6 +70,9 @@ function montarNotificacao(d) {
         badge: '/res/icons/maskable_icon_x96.png',
         data: d
     };
+    // `tag` = identidade da notificação. Permite fechar só ela depois (ex.: ao
+    // imprimir um item) e faz re-disparos do mesmo item substituírem o anterior.
+    if (d.id) opts.tag = String(d.id);
     const actions = [];
     if (msg.imprimir && d.codigo) {
         actions.push({ action: 'imprimir', title: '🖨️ Imprimir preço' });
@@ -81,8 +86,9 @@ function montarNotificacao(d) {
 // Trata um `data` de notificação: ou limpa (push reverso) ou exibe.
 // Fonte única usada tanto no segundo plano quanto no primeiro plano (via postMessage).
 function exibirOuLimpar(d) {
-    // Push reverso "limpar": só fecha as notificações, não exibe nada
-    if (d.evento === 'limpar') return limparNotificacoes();
+    // Push reverso "limpar": só fecha as notificações, não exibe nada.
+    // Com `id`, fecha só a notificação daquele item; sem `id`, fecha todas.
+    if (d.evento === 'limpar') return limparNotificacoes(d.id);
     const [titulo, opts] = montarNotificacao(d);
     return self.registration.showNotification(titulo, opts);
 }
@@ -107,16 +113,18 @@ self.addEventListener('notificationclick', (event) => {
         return;
     }
 
-    // Botão "Imprimir preço" → imprime e também marca como lido nos demais PCs
+    // Botão "Imprimir preço" → imprime e limpa SOMENTE este item. A notificação
+    // clicada já foi fechada acima; o /api/imprimir-preco dispara o push reverso
+    // direcionado (por `id`) que fecha a mesma notificação nos demais PCs. As
+    // outras notificações da fila permanecem.
     if (event.action === 'imprimir' && d.codigo) {
-        event.waitUntil(Promise.all([
+        event.waitUntil(
             fetch('/api/imprimir-preco', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ codigo: d.codigo, id: d.id })
-            }).catch(() => {}),
-            marcarTudoLido()
-        ]));
+            }).catch(() => {})
+        );
         return;
     }
 

@@ -105,6 +105,9 @@ app.post('/api/imprimir-preco', async (req, res) => {
     if (id) {
         marcarImpresso(id);
         io.emit('leituraImpressa', id);
+        // Push reverso direcionado: fecha SÓ a notificação deste item nos demais
+        // PCs, preservando as outras notificações ainda pendentes na fila.
+        push.marcarLido(id);
     }
 
     const { IMPRESSORA_URL } = lerConfig();

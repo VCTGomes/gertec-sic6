@@ -145,12 +145,14 @@ async function notificar(evento, campos = {}, opts = {}) {
     }
 }
 
-// Push reverso: dispara um data-only `acao=limpar` para todos os dispositivos,
-// que então fecham suas notificações abertas ("marcar como lido" em todos os PCs).
+// Push reverso: dispara um data-only `evento=limpar` para todos os dispositivos.
+// Sem `id`, cada PC fecha TODAS as suas notificações ("marcar tudo como lido").
+// Com `id`, fecha só a notificação daquele item (ex.: ao imprimir um da fila).
 // Pequeno cooldown evita rajadas (ex.: vários PCs abrindo o painel ao mesmo tempo).
-async function marcarLido() {
-    return notificar('limpar', {}, {
-        chaveCooldown: 'limpar',
+async function marcarLido(id) {
+    const campos = id ? { id: String(id) } : {};
+    return notificar('limpar', campos, {
+        chaveCooldown: id ? `limpar:${id}` : 'limpar',
         cooldownMs: 1500
     });
 }
