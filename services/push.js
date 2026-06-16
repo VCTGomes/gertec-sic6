@@ -6,31 +6,98 @@ const KEYS_PATH    = path.join(__dirname, '..', 'data', 'push', 'keys.json');
 const RELAY_URL    = process.env.PUSH_RELAY_URL || 'https://webhook-tc.vctgomes.com/notify';
 const RELAY_SECRET = process.env.RELAY_SECRET || '';
 
-function lerTokens() {
-    try { return JSON.parse(fs.readFileSync(KEYS_PATH, 'utf8')); }
+// Cada registro é { device_id, token }. Formato legado (array de strings) é
+// normalizado na leitura para manter compatibilidade com keys.json antigos.
+function lerRegistros() {
+    let dados;
+    try { dados = JSON.parse(fs.readFileSync(KEYS_PATH, 'utf8')); }
     catch { return []; }
+    if (!Array.isArray(dados)) return [];
+    return dados.map(r =>
+        typeof r === 'string' ? { device_id: null, token: r } : r
+    ).filter(r => r && typeof r.token === 'string' && r.token);
 }
 
-function salvarTokens(arr) {
+function salvarRegistros(arr) {
     fs.mkdirSync(path.dirname(KEYS_PATH), { recursive: true });
     fs.writeFileSync(KEYS_PATH, JSON.stringify(arr, null, 2));
 }
 
-function registrarToken(token) {
+// Lista de tokens (strings) para envio ao relay.
+function lerTokens() {
+    return lerRegistros().map(r => r.token);
+}
+
+// Associa token a um device_id. Se o device já existe, atualiza o token;
+// caso contrário, cria o registro. Sem device_id, faz dedupe pelo token (legado).
+function registrarToken(token, deviceId) {
     if (!token || typeof token !== 'string') return false;
-    const tokens = lerTokens();
-    if (!tokens.includes(token)) {
-        tokens.push(token);
-        salvarTokens(tokens);
-        console.log(`[PUSH] Novo dispositivo registrado (${tokens.length} no total).`);
+    const registros = lerRegistros();
+
+    if (deviceId && typeof deviceId === 'string') {
+        const reg = registros.find(r => r.device_id === deviceId);
+        if (reg) {
+            if (reg.token !== token) {
+                reg.token = token;
+                salvarRegistros(registros);
+                console.log(`[PUSH] Token atualizado para device ${deviceId}.`);
+            }
+        } else {
+            // Adota registro legado (device_id null) de mesmo token p/ evitar duplicar.
+            const legado = registros.find(r => !r.device_id && r.token === token);
+            if (legado) {
+                legado.device_id = deviceId;
+                salvarRegistros(registros);
+                console.log(`[PUSH] Device ${deviceId} associado a token existente.`);
+            } else {
+                registros.push({ device_id: deviceId, token });
+                salvarRegistros(registros);
+                console.log(`[PUSH] Novo dispositivo registrado (${registros.length} no total).`);
+            }
+        }
+        return true;
+    }
+
+    if (!registros.some(r => r.token === token)) {
+        registros.push({ device_id: null, token });
+        salvarRegistros(registros);
+        console.log(`[PUSH] Novo dispositivo registrado (${registros.length} no total).`);
+    }
+    return true;
+}
+
+// Reenvio fire-and-forget a cada abertura da página: confirma/atualiza o token
+// do device. Como os tokens do FCM rotacionam, se divergir do cadastrado o novo
+// prevalece. Se o device ainda não existe, registra.
+function refreshToken(deviceId, token) {
+    if (!deviceId || typeof deviceId !== 'string') return false;
+    if (!token || typeof token !== 'string') return false;
+    const registros = lerRegistros();
+    const reg = registros.find(r => r.device_id === deviceId);
+    if (!reg) {
+        // Adota registro legado (device_id null) de mesmo token p/ evitar duplicar.
+        const legado = registros.find(r => !r.device_id && r.token === token);
+        if (legado) {
+            legado.device_id = deviceId;
+            salvarRegistros(registros);
+            console.log(`[PUSH] Device ${deviceId} associado a token existente via refresh.`);
+        } else {
+            registros.push({ device_id: deviceId, token });
+            salvarRegistros(registros);
+            console.log(`[PUSH] Device ${deviceId} registrado via refresh (${registros.length} no total).`);
+        }
+    } else if (reg.token !== token) {
+        reg.token = token;
+        salvarRegistros(registros);
+        console.log(`[PUSH] Token rotacionado para device ${deviceId}.`);
     }
     return true;
 }
 
 function removerTokens(invalidos) {
     if (!Array.isArray(invalidos) || !invalidos.length) return;
-    const restantes = lerTokens().filter(t => !invalidos.includes(t));
-    salvarTokens(restantes);
+    const restantes = lerRegistros().filter(r => !invalidos.includes(r.token));
+    salvarRegistros(restantes);
     console.log(`[PUSH] ${invalidos.length} token(s) inválido(s) removido(s).`);
 }
 
@@ -105,4 +172,4 @@ function contabilizarBusca(codigo, nome, limite, id) {
     }
 }
 
-module.exports = { registrarToken, removerTokens, notificar, marcarLido, contabilizarBusca, lerTokens };
+module.exports = { registrarToken, refreshToken, removerTokens, notificar, marcarLido, contabilizarBusca, lerTokens };

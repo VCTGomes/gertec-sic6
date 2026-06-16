@@ -1011,6 +1011,56 @@
                 .catch((e) => console.warn('Falha ao registrar o Service Worker:', e));
         }
 
+        // Identifica este dispositivo de forma estável (gerado no 1º acesso e
+        // persistido no localStorage). Permite o backend manter device_id+token
+        // e atualizar o token quando o FCM o rotacionar.
+        function obterDeviceId() {
+            let id = localStorage.getItem('push_device_id');
+            if (!id) {
+                id = (crypto.randomUUID && crypto.randomUUID()) ||
+                     ('dev-' + Date.now() + '-' + Math.random().toString(36).slice(2));
+                localStorage.setItem('push_device_id', id);
+            }
+            return id;
+        }
+
+        // Obtém o token do FCM (assume permissão já concedida e config presente).
+        async function obterTokenFCM() {
+            if (!self.FIREBASE_CONFIG || !self.FIREBASE_VAPID_KEY) return null;
+            if (!firebase.apps.length) firebase.initializeApp(self.FIREBASE_CONFIG);
+            const reg = swRegistration || await navigator.serviceWorker.register('/sw.js');
+            const messaging = firebase.messaging();
+            messaging.onMessage((payload) => {
+                const sw = reg.active || navigator.serviceWorker.controller;
+                if (sw) sw.postMessage({ type: 'fcm-foreground', data: payload.data || {} });
+            });
+            return messaging.getToken({
+                vapidKey: self.FIREBASE_VAPID_KEY,
+                serviceWorkerRegistration: reg
+            });
+        }
+
+        // A cada abertura da página, reenvia token+device_id (fire-and-forget).
+        // IMPORTANTE: só roda se as notificações JÁ estiverem ativadas — assim
+        // nunca dispara o pedido de permissão para quem não as quer.
+        async function refreshTokenPush() {
+            try {
+                if (!('serviceWorker' in navigator) || !('Notification' in window)) return;
+                if (Notification.permission !== 'granted') return;
+                const token = await obterTokenFCM();
+                if (!token) return;
+                fetch('/api/push/refresh-token', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token, device_id: obterDeviceId() }),
+                    keepalive: true
+                }).catch(() => {});
+            } catch (e) {
+                console.warn('Falha no refresh do token de push:', e);
+            }
+        }
+        refreshTokenPush();
+
         function msgPush(texto, ok) {
             const el = document.getElementById('msgPush');
             el.className = `text-xs font-semibold text-center py-1.5 rounded-lg ${ok
@@ -1034,28 +1084,14 @@
                 const permissao = await Notification.requestPermission();
                 if (permissao !== 'granted') return msgPush('Permissão negada pelo navegador.', false);
 
-                if (!firebase.apps.length) firebase.initializeApp(self.FIREBASE_CONFIG);
-                const reg = swRegistration || await navigator.serviceWorker.register('/sw.js');
-                const messaging = firebase.messaging();
-
-                // Mensagens com a aba EM FOCO: o FCM entrega aqui (não no SW).
-                // Apenas repassamos o `data` pro SW, que monta/exibe (ou limpa) a
-                // notificação — mantendo a lógica centralizada no sw.js.
-                messaging.onMessage((payload) => {
-                    const sw = reg.active || navigator.serviceWorker.controller;
-                    if (sw) sw.postMessage({ type: 'fcm-foreground', data: payload.data || {} });
-                });
-
-                const token = await messaging.getToken({
-                    vapidKey: self.FIREBASE_VAPID_KEY,
-                    serviceWorkerRegistration: reg
-                });
+                // Reutiliza o helper (inicializa Firebase + onMessage) e obtém o token.
+                const token = await obterTokenFCM();
                 if (!token) return msgPush('Não foi possível obter o token.', false);
 
                 const res = await fetch('/api/push/register', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ token })
+                    body: JSON.stringify({ token, device_id: obterDeviceId() })
                 });
                 if (!res.ok) throw new Error('falha ao registrar no servidor');
                 msgPush('Notificações ativadas neste dispositivo!', true);

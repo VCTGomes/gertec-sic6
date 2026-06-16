@@ -126,8 +126,20 @@ const push = require('./services/push');
 
 // O navegador/PWA registra aqui o token do FCM após ativar as notificações
 app.post('/api/push/register', (req, res) => {
-    if (!push.registrarToken(req.body && req.body.token)) {
+    const { token, device_id } = req.body || {};
+    if (!push.registrarToken(token, device_id)) {
         return res.status(400).json({ erro: 'token inválido' });
+    }
+    res.json({ ok: true });
+});
+
+// Reenvio fire-and-forget a cada abertura da página: confirma o token do device
+// e, se o FCM o rotacionou, atualiza no cadastro. Só é chamado quando as
+// notificações já estão ativadas (não dispara pedido de permissão).
+app.post('/api/push/refresh-token', (req, res) => {
+    const { token, device_id } = req.body || {};
+    if (!push.refreshToken(device_id, token)) {
+        return res.status(400).json({ erro: 'token ou device_id inválido' });
     }
     res.json({ ok: true });
 });
