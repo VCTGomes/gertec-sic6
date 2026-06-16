@@ -1015,14 +1015,16 @@
         // persistido no localStorage). Permite o backend manter device_id+token
         // e atualizar o token quando o FCM o rotacionar.
         function obterDeviceId() {
-            let id = localStorage.getItem('push_device_id');
+            let id = localStorage.getItem('device_id');
             if (!id) {
                 id = (crypto.randomUUID && crypto.randomUUID()) ||
                      ('dev-' + Date.now() + '-' + Math.random().toString(36).slice(2));
-                localStorage.setItem('push_device_id', id);
+                localStorage.setItem('device_id', id);
             }
             return id;
         }
+        // Garante o device_id já no primeiro acesso, independente do push.
+        obterDeviceId();
 
         // Obtém o token do FCM (assume permissão já concedida e config presente).
         async function obterTokenFCM() {
