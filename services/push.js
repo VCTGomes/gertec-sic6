@@ -111,13 +111,15 @@ function emCooldown(chave, ms) {
 }
 
 /**
- * Encaminha uma notificação para o relay, que distribui via FCM.
- * @param {string} title
- * @param {string} body
- * @param {object} [opts] { data, chaveCooldown, cooldownMs }
+ * Encaminha uma notificação para o relay, que valida/sanitiza e distribui via FCM.
+ * O app só informa o `evento` + campos estruturados — a redação exibida é montada
+ * no `sw.js` (cliente). Assim ninguém manda texto arbitrário (evita mau uso).
+ * @param {string} evento  chave do catálogo (ex.: 'leitor_desconectado')
+ * @param {object} [campos] campos do evento (ex.: { nome, ip, motivo })
+ * @param {object} [opts]  { chaveCooldown, cooldownMs }
  */
-async function notificar(title, body, opts = {}) {
-    const { data, chaveCooldown, cooldownMs = 60000 } = opts;
+async function notificar(evento, campos = {}, opts = {}) {
+    const { chaveCooldown, cooldownMs = 60000 } = opts;
 
     const tokens = lerTokens();
     if (!tokens.length) return { ok: false, motivo: 'nenhum dispositivo registrado' };
@@ -132,7 +134,7 @@ async function notificar(title, body, opts = {}) {
                 'Content-Type': 'application/json',
                 ...(RELAY_SECRET ? { Authorization: `Bearer ${RELAY_SECRET}` } : {})
             },
-            body: JSON.stringify({ tokens, title, body, data })
+            body: JSON.stringify({ tokens, evento, ...campos })
         });
         const json = await resp.json().catch(() => ({}));
         if (Array.isArray(json.invalidos)) removerTokens(json.invalidos);
@@ -147,8 +149,7 @@ async function notificar(title, body, opts = {}) {
 // que então fecham suas notificações abertas ("marcar como lido" em todos os PCs).
 // Pequeno cooldown evita rajadas (ex.: vários PCs abrindo o painel ao mesmo tempo).
 async function marcarLido() {
-    return notificar('GERTEC', '', {
-        data: { acao: 'limpar' },
+    return notificar('limpar', {}, {
         chaveCooldown: 'limpar',
         cooldownMs: 1500
     });
@@ -163,9 +164,8 @@ function contabilizarBusca(codigo, nome, limite, id) {
     if (!codigo || !limite || limite < 1) return;
     const n = (contagemBuscas[codigo] = (contagemBuscas[codigo] || 0) + 1);
     if (n % limite === 0) {
-        notificar('Produto muito buscado', `${nome} já foi consultado ${n}x`, {
-            // `id` = leitura que cruzou o limite; o SW repassa pra registrar a impressão
-            data: { codigo, nome, acao: 'imprimir', ...(id ? { id } : {}) },
+        // `id` = leitura que cruzou o limite; o SW repassa pra registrar a impressão.
+        notificar('produto_frequente', { codigo, nome, n, ...(id ? { id } : {}) }, {
             chaveCooldown: `bm:${codigo}`,
             cooldownMs: 60000
         });

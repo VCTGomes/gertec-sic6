@@ -146,7 +146,7 @@ app.post('/api/push/refresh-token', (req, res) => {
 
 // Dispara uma notificação de teste para todos os dispositivos registrados
 app.post('/api/push/test', async (req, res) => {
-    res.json(await push.notificar('GERTEC — Teste', 'Notificações funcionando! 🎉'));
+    res.json(await push.notificar('teste'));
 });
 
 // Push reverso: marca tudo como lido (limpa notificações) em todos os PCs

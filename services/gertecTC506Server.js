@@ -319,8 +319,7 @@ module.exports = function (io) {
             delete terminais[ip];
             delete socketsTCP[ip];
             io.emit('atualizarTerminaisTC', Object.values(terminais));
-            push.notificar('Leitor desconectado', `${nome} caiu (queda brusca).`, {
-                data: { ip, tipo: 'desconexao' },
+            push.notificar('leitor_desconectado', { nome, ip, motivo: 'queda' }, {
                 chaveCooldown: `disc:${ip}`
             });
         });
@@ -332,8 +331,7 @@ module.exports = function (io) {
             delete terminais[ip];
             delete socketsTCP[ip];
             io.emit('atualizarTerminaisTC', Object.values(terminais));
-            push.notificar('Leitor desconectado', `${nome} saiu do ar.`, {
-                data: { ip, tipo: 'desconexao' },
+            push.notificar('leitor_desconectado', { nome, ip, motivo: 'saiu' }, {
                 chaveCooldown: `disc:${ip}`
             });
         });
@@ -401,8 +399,7 @@ module.exports = function (io) {
                 };
                 salvarLeitura(leituraErro);
                 io.emit('novaLeitura', leituraErro);
-                push.notificar('Produto não encontrado', `Código ${codigo} em ${nomeTerminal(terminais[ip], ip)}`, {
-                    data: { codigo, tipo: 'nao_encontrado' },
+                push.notificar('produto_nao_encontrado', { codigo, terminal: nomeTerminal(terminais[ip], ip) }, {
                     chaveCooldown: `nf:${codigo}`
                 });
                 return;

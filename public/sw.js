@@ -31,31 +31,58 @@ function marcarTudoLido() {
     ]);
 }
 
-// Monta as opções da notificação a partir do `data` (mensagens data-only).
-// Toda notificação ganha o botão "Marcar como lido". Se vier `acao=imprimir`
-// com um código, o botão "Imprimir preço" fica lado a lado.
+// Catálogo de frases (montado AQUI, no cliente — código aberto e transparente).
+// O backend/relay só trafegam o `evento` + campos estruturados e sanitizados; a
+// redação exibida vive neste arquivo. Cada entrada devolve { title, body } e, se
+// fizer sentido, `imprimir: true` para habilitar o botão de impressão.
+const EVENTOS = {
+    leitor_desconectado: (d) => ({
+        title: 'Leitor desconectado',
+        body: `${d.nome || 'Leitor'} ${d.motivo === 'queda' ? 'caiu (queda brusca).' : 'saiu do ar.'}`
+    }),
+    produto_nao_encontrado: (d) => ({
+        title: 'Produto não encontrado',
+        body: `Código ${d.codigo} em ${d.terminal || 'terminal'}`
+    }),
+    produto_frequente: (d) => ({
+        title: 'Produto muito buscado',
+        body: `${d.nome || 'Produto'} já foi consultado ${d.n}x`,
+        imprimir: true
+    }),
+    teste: () => ({
+        title: 'GERTEC — Teste',
+        body: 'Notificações funcionando! 🎉'
+    })
+};
+
+// Monta as opções da notificação a partir do `evento` + campos (data-only).
+// Toda notificação ganha o botão "Marcar como lido". Eventos `imprimir` com um
+// código ganham o botão "Imprimir preço" lado a lado.
 function montarNotificacao(d) {
+    const fab = EVENTOS[d.evento];
+    const msg = fab ? fab(d) : { title: 'GERTEC', body: '' };
+
     const opts = {
-        body: d.body || '',
+        body: msg.body || '',
         icon: '/res/icons/icon_x512.png',
         badge: '/res/icons/maskable_icon_x96.png',
         data: d
     };
     const actions = [];
-    if (d.acao === 'imprimir' && d.codigo) {
+    if (msg.imprimir && d.codigo) {
         actions.push({ action: 'imprimir', title: '🖨️ Imprimir preço' });
         opts.requireInteraction = true;
     }
     actions.push({ action: 'lido', title: '✓ Marcar como lido' });
     opts.actions = actions;
-    return [d.title || 'GERTEC', opts];
+    return [msg.title || 'GERTEC', opts];
 }
 
 // Trata um `data` de notificação: ou limpa (push reverso) ou exibe.
 // Fonte única usada tanto no segundo plano quanto no primeiro plano (via postMessage).
 function exibirOuLimpar(d) {
     // Push reverso "limpar": só fecha as notificações, não exibe nada
-    if (d.acao === 'limpar') return limparNotificacoes();
+    if (d.evento === 'limpar') return limparNotificacoes();
     const [titulo, opts] = montarNotificacao(d);
     return self.registration.showNotification(titulo, opts);
 }

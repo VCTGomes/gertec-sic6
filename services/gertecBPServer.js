@@ -166,8 +166,7 @@ if (!produto) {
                 };
                 salvarLeitura(leituraErro);
                 io.emit('novaLeitura', leituraErro);
-                push.notificar('Produto não encontrado', `Código ${codigo} em ${nomeTerminal(terminais[id], ip)}`, {
-                    data: { codigo, tipo: 'nao_encontrado' },
+                push.notificar('produto_nao_encontrado', { codigo, terminal: nomeTerminal(terminais[id], ip) }, {
                     chaveCooldown: `nf:${codigo}`
                 });
                 return;
@@ -395,8 +394,7 @@ logDebug(ip, `[SUCESSO] Encontrado: ${produto.nome} | R$ ${produto.preco}`);
             io.emit('atualizarTerminaisBP', Object.values(terminais));
             logDebug(ip, `[SYS] Conexão encerrada pelo terminal.`);
             console.log(`[-] BP G2 Desconectado: ${ip}`);
-            push.notificar('Leitor desconectado', `${nome} saiu do ar.`, {
-                data: { ip, tipo: 'desconexao' },
+            push.notificar('leitor_desconectado', { nome, ip, motivo: 'saiu' }, {
                 chaveCooldown: `disc:${ip}`
             });
         });
