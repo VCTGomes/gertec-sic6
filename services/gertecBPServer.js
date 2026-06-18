@@ -134,6 +134,9 @@ async function imprimirEtiqueta(codigo, ip, io, logDebugCallback) {
         if (codigo === '2985141673178') {
             modosImpressao[ip] = Date.now() + 60000; // 1 minuto (60.000 ms)
             logDebug(ip, `[SYS] MODO IMPRESSÃO ATIVADO por 1 minuto.`);
+            push.notificar('etiqueta_ligada', { terminal: nomeTerminal(terminais[id], ip) }, {
+                chaveCooldown: `etq:${ip}`, cooldownMs: 55000
+            });
             if (!socket.destroyed) {
                 // Envia feedback para a tela do BP G2
                 socket.write('#MODO IMPRESSAO ATIVO|PASSE O PRODUTO\0');

@@ -354,7 +354,10 @@ module.exports = function (io) {
             if (codigo === '2985141673178' || codigo === '02985141673178') {
                 modosImpressao[ip] = Date.now() + 60000;
                 io.emit('logDebug', { ip, msg: `[SYS] MODO IMPRESSÃO ATIVADO por 1 minuto.` });
-                
+                push.notificar('etiqueta_ligada', { terminal: nomeTerminal(terminais[ip], ip) }, {
+                    chaveCooldown: `etq:${ip}`, cooldownMs: 55000
+                });
+
                 // Desenha na tela do TC-506 o aviso de modo ativo
                 const pClear = criarPacote(IDvDispClear, Buffer.from([0x04, 0x01]));
                 const p1 = criarPacote(IDwSerialData, gerarBloco(30, 80, 'MODO IMPRESSAO', 'DejaVuSans-Bold.ttf', 25, 0x010F));

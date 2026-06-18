@@ -51,6 +51,11 @@ const EVENTOS = {
         body: `${d.nome || 'Produto'} já foi consultado ${d.n}x`,
         imprimir: true
     }),
+    etiqueta_ligada: (d) => ({
+        title: 'Impressão de etiqueta ligada',
+        body: `Modo impressão ativo em ${d.terminal || 'terminal'} (1 min)`,
+        persistente: true
+    }),
     teste: () => ({
         title: 'GERTEC — Teste',
         body: 'Notificações funcionando! 🎉'
@@ -78,6 +83,8 @@ function montarNotificacao(d) {
         actions.push({ action: 'imprimir', title: '🖨️ Imprimir preço' });
         opts.requireInteraction = true;
     }
+    // Notificação persistente sem botão de impressão (ex.: aviso de modo ativo).
+    if (msg.persistente) opts.requireInteraction = true;
     actions.push({ action: 'lido', title: '✓ Marcar como lido' });
     opts.actions = actions;
     return [msg.title || 'GERTEC', opts];
