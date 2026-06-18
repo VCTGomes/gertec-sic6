@@ -158,12 +158,25 @@ async function marcarLido(id) {
 }
 
 // Conta consultas por código (em memória, reinicia junto com o serviço).
-// A cada múltiplo de `limite` buscas do mesmo código, dispara uma notificação
-// com botão "Imprimir preço".
-const contagemBuscas = {};
+// A cada múltiplo de `limite` buscas do mesmo código (no dia), dispara uma
+// notificação com botão "Imprimir preço".
+// A contagem é diária: no primeiro acesso de cada dia o objeto é trocado por
+// um novo {}, o que zera os contadores e libera da RAM os dados do dia anterior.
+let contagemBuscas = {};
+let diaContagem = null; // 'YYYY-MM-DD' do dia atual da contagem (horário local)
+function diaLocal() {
+    const d = new Date();
+    return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+}
 function contabilizarBusca(codigo, nome, limite, id) {
     limite = parseInt(limite);
     if (!codigo || !limite || limite < 1) return;
+    const hoje = diaLocal();
+    if (hoje !== diaContagem) {
+        // Virou o dia (ou primeira busca após o restart): zera e libera a RAM.
+        contagemBuscas = {};
+        diaContagem = hoje;
+    }
     const n = (contagemBuscas[codigo] = (contagemBuscas[codigo] || 0) + 1);
     if (n % limite === 0) {
         // `id` = leitura que cruzou o limite; o SW repassa pra registrar a impressão.
