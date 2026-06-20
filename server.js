@@ -157,6 +157,10 @@ app.post('/api/push/marcar-lido', async (req, res) => {
     res.json(await push.marcarLido());
 });
 
+// ── API HTTP SIC Printer (módulo opcional/isolado — celulares via HTTP) ───────
+// Mantido em arquivo próprio (routes/sicprinter-http.js) para auditoria fácil.
+require('./routes/sicprinter-http')(app);
+
 // ── Serviços TCP ─────────────────────────────────────────────────────────────
 require('./services/gertecBPServer')(io);
 require('./services/gertecTC506Server')(io);

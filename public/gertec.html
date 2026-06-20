@@ -353,10 +353,59 @@
                     <span class="text-xs text-gray-400">Avisa quando um leitor cai ou um produto não é encontrado.</span>
                 </div>
 
+                <div class="border-t border-gray-200 pt-4 flex flex-col gap-2">
+                    <label class="text-xs font-bold text-gray-600 uppercase">Aplicativo no Celular</label>
+                    <button onclick="abrirModalCelular()" id="btnConectarCelular" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-bold transition-colors flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-mobile-screen-button"></i> Conectar Celular
+                    </button>
+                    <span class="text-xs text-gray-400">Gera um QR Code para o app SIC Printer ler preços por aqui, sem dar a senha do banco ao aparelho.</span>
+                </div>
+
                 <div id="msgConfig" class="hidden text-xs font-semibold text-center py-2 rounded-lg"></div>
                 <button onclick="salvarConfig()" id="btnSalvarConfig" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-bold transition-colors flex items-center justify-center gap-2">
                     <i class="fa-solid fa-floppy-disk"></i> Salvar Ajustes
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Conectar Celular (SIC Printer HTTP) -->
+    <div id="modalCelular" class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style="background-color: rgba(17, 24, 39, 0.5);">
+        <div class="modal-panel bg-white rounded-xl shadow-2xl w-full max-w-sm max-h-[90vh] overflow-hidden flex flex-col">
+            <div class="bg-blue-700 text-white p-4 shrink-0">
+                <div class="flex justify-between items-center gap-3">
+                    <h2 class="font-black text-xl leading-tight flex items-center gap-2"><i class="fa-solid fa-mobile-screen-button"></i> Conectar Celular</h2>
+                    <button onclick="fecharModalEl('modalCelular')" class="text-blue-300 hover:text-white transition p-2">
+                        <i class="fa-solid fa-xmark text-xl"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="p-5 flex flex-col gap-4 overflow-y-auto">
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800 flex items-start gap-2">
+                    <i class="fa-solid fa-shield-halved mt-0.5 shrink-0"></i>
+                    <span>O app lê os preços por esta máquina. A senha do banco <b>nunca</b> vai para o celular — só um token revogável.</span>
+                </div>
+
+                <label class="flex items-center gap-2 cursor-pointer select-none">
+                    <input type="checkbox" id="chkSicHabilitado" class="w-4 h-4 accent-blue-600">
+                    <span class="text-sm font-semibold text-gray-700">Habilitar acesso de celulares (API HTTP)</span>
+                </label>
+
+                <div id="sicArea" class="hidden flex flex-col items-center gap-3 border-t border-gray-200 pt-4">
+                    <div class="bg-white border border-gray-200 rounded-lg p-3">
+                        <img id="sicQrImg" alt="QR Code" class="w-56 h-56" />
+                    </div>
+                    <p class="text-xs text-gray-500 text-center">Abra o app SIC Printer → <b>Conectar via QR</b> e aponte para o código acima.</p>
+                    <div class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-600 break-all">
+                        <div><span class="text-gray-400">Empresa:</span> <span id="sicEmpresa" class="font-semibold">—</span></div>
+                        <div class="font-mono mt-1"><span class="text-gray-400">Endereço:</span> <span id="sicBaseUrl">—</span></div>
+                    </div>
+                    <button onclick="rotacionarSicToken()" id="btnSicRotacionar" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-rotate"></i> Gerar novo token (revoga o anterior)
+                    </button>
+                </div>
+
+                <div id="msgSic" class="hidden text-xs font-semibold text-center py-2 rounded-lg"></div>
             </div>
         </div>
     </div>
@@ -1140,5 +1189,7 @@
         carregarImpressos().then(() => renderizarLeituras(false));
         carregarApelidos();
     </script>
+    <!-- Conectar Celular (SIC Printer HTTP) — script isolado e auditável -->
+    <script src="/assets/js/sicprinter.js"></script>
 </body>
 </html>
