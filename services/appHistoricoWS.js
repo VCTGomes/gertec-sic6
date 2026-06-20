@@ -34,9 +34,14 @@ function paraItemApp(l) {
     const erro = l.status === 'erro';
     const preco = String(l.preco || '').replace(/^R\$\s*/i, '').trim();
 
+    // Tipo do leitor de origem, pronto p/ o app (mesma regra do painel web).
+    const tipo = /\bApp\b/i.test(terminalStr) ? 'app'
+               : (/TC-?506/i.test(terminalStr) ? 'tc' : 'bp');
+
     return {
         id: l.id || null,            // permite ao app correlacionar atualizações (ex.: impresso)
         ts: l.ts || l.hora || null,
+        tipo,                        // 'tc' | 'bp' | 'app' — origem da leitura
         terminal: apelido || nomeBase || terminalStr,
         terminalIp,
         codigo: l.codigo || '',

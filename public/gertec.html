@@ -759,7 +759,12 @@
         function limparHistorico() { if (confirm("Limpar todo o histórico?\n\nEssa ação é irreversível e apagará todas as leituras registradas.")) socket.emit('limparHistorico'); }
 
         function iconeTerminalHist(leitura) {
-            const isTC = /TC-?506/i.test(leitura.terminal || '');
+            const t = leitura.terminal || '';
+            // Leitura/impressão vinda do app de celular
+            if (/\bApp\b/i.test(t)) {
+                return `<i class="fa-solid fa-mobile-screen-button text-blue-600 mr-1.5 align-text-bottom"></i>`;
+            }
+            const isTC = /TC-?506/i.test(t);
             const cls = isTC ? 'term-icon--tc506' : 'term-icon--buscapreco';
             return `<span class="term-icon ${cls} mr-1.5 align-text-bottom"></span>`;
         }
@@ -911,7 +916,7 @@
             const cont = {};
             historicoCompleto.filter(l => l.serial).forEach(l => {
                 const k = chaveLeitor(l);
-                if (!cont[k]) cont[k] = { chave: k, nome: nomeLeitor(l), tipo: /TC-?506/i.test(l.terminal || '') ? 'TC' : 'BP', qtd: 0 };
+                if (!cont[k]) cont[k] = { chave: k, nome: nomeLeitor(l), tipo: /\bApp\b/i.test(l.terminal || '') ? 'APP' : (/TC-?506/i.test(l.terminal || '') ? 'TC' : 'BP'), qtd: 0 };
                 cont[k].nome = nomeLeitor(l); // mantém apelido atualizado
                 cont[k].qtd++;
             });
@@ -927,12 +932,14 @@
             container.innerHTML = leitoresAtuais.map((item, idx) => {
                 const pct = Math.max(4, Math.round((item.qtd / max) * 100));
                 const ativo = leitorFiltro === item.chave;
-                const iconCls = item.tipo === 'TC' ? 'term-icon--tc506' : 'term-icon--buscapreco';
+                const iconeHtml = item.tipo === 'APP'
+                    ? '<i class="fa-solid fa-mobile-screen-button text-blue-500"></i>'
+                    : `<span class="term-icon ${item.tipo === 'TC' ? 'term-icon--tc506' : 'term-icon--buscapreco'} text-blue-500"></span>`;
                 return `
                 <button onclick="selecionarLeitor(${idx})" class="w-full text-left focus:outline-none">
                     <div class="flex items-center justify-between text-sm mb-1">
                         <span class="font-semibold ${ativo ? 'text-blue-700' : 'text-gray-700'} flex items-center gap-1.5 truncate mr-2">
-                            <span class="term-icon ${iconCls} text-blue-500"></span>${item.nome}
+                            ${iconeHtml}${item.nome}
                         </span>
                         <span class="shrink-0 text-xs font-bold ${ativo ? 'text-blue-700' : 'text-gray-500'}">${item.qtd} leitura${item.qtd > 1 ? 's' : ''}</span>
                     </div>
