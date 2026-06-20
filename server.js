@@ -62,37 +62,13 @@ app.post('/api/apelido', (req, res) => {
     }
 });
 
-// ── Registro de leituras já impressas ─────────────────────────────────────────
-const IMPRESSOS_PATH = path.join(__dirname, 'data', 'temp', 'bdImpressos.json');
-
-function lerImpressos() {
-    try {
-        if (fs.existsSync(IMPRESSOS_PATH)) return JSON.parse(fs.readFileSync(IMPRESSOS_PATH, 'utf8'));
-    } catch (e) { console.error('Erro ao ler impressos:', e.message); }
-    return [];
-}
-
-function marcarImpresso(id) {
-    if (!id) return;
-    const ids = lerImpressos();
-    if (!ids.includes(id)) {
-        ids.push(id);
-        fs.mkdirSync(path.dirname(IMPRESSOS_PATH), { recursive: true });
-        fs.writeFileSync(IMPRESSOS_PATH, JSON.stringify(ids, null, 2));
-    }
-}
+// ── Histórico + impressões (SQLite unificado, serviço desacoplado) ────────────
+// Fonte única em services/historico.js (sobre data/gertec.db). As pontes de
+// transporte (Socket.IO/HTTP/WS) ficam mais abaixo.
+const historico = require('./services/historico');
 
 // Lista de IDs de leituras que já tiveram o preço impresso (consumida pelo front no load)
-app.get('/api/impressos', (req, res) => res.json(lerImpressos()));
-
-// Limpa o registro de impressos junto com o histórico
-io.on('connection', (socket) => {
-    socket.on('limparHistorico', () => {
-        fs.mkdirSync(path.dirname(IMPRESSOS_PATH), { recursive: true });
-        fs.writeFileSync(IMPRESSOS_PATH, JSON.stringify([], null, 2));
-        io.emit('impressosLimpos');
-    });
-});
+app.get('/api/impressos', (req, res) => res.json(historico.lerImpressos()));
 
 // ── Impressão de Etiqueta ─────────────────────────────────────────────────────
 app.post('/api/imprimir-preco', async (req, res) => {
@@ -101,10 +77,9 @@ app.post('/api/imprimir-preco', async (req, res) => {
 
     res.json({ ok: true });
 
-    // Marca a leitura individual como impressa e avisa todos os clientes
+    // Marca a leitura individual como impressa (a ponte emite 'leituraImpressa')
     if (id) {
-        marcarImpresso(id);
-        io.emit('leituraImpressa', id);
+        historico.marcarImpresso(id);
         // Push reverso direcionado: fecha SÓ a notificação deste item nos demais
         // PCs, preservando as outras notificações ainda pendentes na fila.
         push.marcarLido(id);
@@ -161,10 +136,9 @@ app.post('/api/push/marcar-lido', async (req, res) => {
 // Mantido em arquivo próprio (routes/sicprinter-http.js) para auditoria fácil.
 require('./routes/sicprinter-http')(app);
 
-// ── Histórico de leituras (serviço desacoplado) ───────────────────────────────
-// Fonte única em services/historico.js. Aqui ficam só as PONTES de transporte:
-// Socket.IO (front atual) e HTTP. O WebSocket do app é montado logo abaixo.
-const historico = require('./services/historico');
+// ── Pontes de transporte do histórico (Socket.IO + HTTP) ──────────────────────
+// O serviço (historico) já foi requerido acima. Aqui só ligamos os transportes;
+// o WebSocket do app é montado logo abaixo.
 
 // Ponte Socket.IO: mantém o front atual funcionando sem nenhuma mudança no HTML.
 io.on('connection', (socket) => {
@@ -172,7 +146,8 @@ io.on('connection', (socket) => {
     socket.on('limparHistorico', () => historico.limpar());
 });
 historico.on('nova', (leitura) => io.emit('novaLeitura', leitura));
-historico.on('limpo', () => io.emit('historicoLeituras', []));
+historico.on('impresso', (id) => io.emit('leituraImpressa', id));
+historico.on('limpo', () => { io.emit('historicoLeituras', []); io.emit('impressosLimpos'); });
 
 // HTTP: front e (depois) app podem ler o histórico sem depender do WebSocket.
 app.get('/api/historico', (req, res) => res.json(historico.lerTudo()));

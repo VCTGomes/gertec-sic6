@@ -22,6 +22,7 @@
 const crypto = require('crypto');
 const QRCode = require('qrcode');
 const { query, queryOne } = require('../database');
+const historico = require('../services/historico'); // registra leitura/impressão do app
 // Store/tokens compartilhados com o WebSocket do app (sem duplicar a comparação).
 const { lerStore, salvarStore, novoToken, tokensIguais } = require('../services/sicprinterStore');
 
@@ -280,6 +281,38 @@ module.exports = function (app) {
             : await queryOne(`SELECT TOP 1 VALOR FROM TABSICINI WHERE IDENT = @ident`, { ident });
         if (!row) return erro(res, 404, 'NAO_ENCONTRADO', 'Parâmetro não encontrado');
         res.json({ ident, valor: row.VALOR != null ? String(row.VALOR).trim() : null });
+    }));
+
+    // ════════════════════════════════════════════════════════════════════════
+    //  4.10 REGISTRAR IMPRESSÃO DO CELULAR (app imprime sozinho; só nos avisa)
+    //  ANEXA a impressão à leitura mais recente do mesmo código (não cria uma
+    //  "consulta do app"). Só cria registro novo se NÃO houver leitura do código.
+    // ════════════════════════════════════════════════════════════════════════
+    app.post('/v1/historico/impressao', exigeLeitura, rota(async (req, res) => {
+        const b = req.body || {};
+        const codigo = b.codigo != null ? String(b.codigo).trim() : '';
+        if (!codigo) return erro(res, 400, 'CODIGO_AUSENTE', 'codigo obrigatório');
+
+        // 1) Existe leitura desse código? Anexa a impressão a ela (idempotente).
+        const existente = historico.ultimaPorCodigo(codigo);
+        if (existente) {
+            historico.marcarImpresso(existente.id); // emite 'impresso' se mudou
+            return res.json({ ok: true, id: existente.id, anexado: true });
+        }
+
+        // 2) Não havia consulta desse código: cria um registro (origem app) impresso.
+        const dispositivo = b.dispositivo ? String(b.dispositivo).trim() : '';
+        const leitura = historico.registrar({
+            terminal: dispositivo ? `App – ${dispositivo}` : 'App SIC Printer',
+            serial: b.deviceId ? String(b.deviceId).trim() : '',
+            codigo,
+            nome: b.descricao != null ? String(b.descricao).trim() : '',
+            preco: b.preco != null ? String(b.preco).trim() : '',
+            hora: new Date().toLocaleTimeString('pt-BR'),
+            status: 'ok',
+        });
+        historico.marcarImpresso(leitura.id);
+        res.json({ ok: true, id: leitura.id, anexado: false });
     }));
 
     // ════════════════════════════════════════════════════════════════════════

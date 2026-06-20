@@ -35,13 +35,14 @@ function paraItemApp(l) {
     const preco = String(l.preco || '').replace(/^R\$\s*/i, '').trim();
 
     return {
+        id: l.id || null,            // permite ao app correlacionar atualizações (ex.: impresso)
         ts: l.ts || l.hora || null,
         terminal: apelido || nomeBase || terminalStr,
         terminalIp,
         codigo: l.codigo || '',
         descricao: erro ? '' : (l.nome || ''),
         preco: preco === '-' ? '' : preco,
-        acao: erro ? 'nao_encontrado' : 'consultado',
+        acao: erro ? 'nao_encontrado' : (l.impresso ? 'impresso' : 'consultado'),
     };
 }
 
@@ -103,6 +104,11 @@ module.exports = function (server) {
     historico.on('nova', (leitura) => {
         const item = paraItemApp(leitura);
         wss.clients.forEach((ws) => enviar(ws, { tipo: 'leitura', item }));
+    });
+    // Uma leitura foi marcada como impressa → atualiza ao vivo (app acha pelo id).
+    historico.on('impresso', (id) => {
+        const msg = { tipo: 'impresso', id, ts: new Date().toISOString() };
+        wss.clients.forEach((ws) => enviar(ws, msg));
     });
     historico.on('limpo', () => {
         wss.clients.forEach((ws) => enviar(ws, { tipo: 'snapshot', itens: [] }));
