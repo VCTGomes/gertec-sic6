@@ -4,12 +4,13 @@ importScripts('https://www.gstatic.com/firebasejs/12.14.0/firebase-messaging-com
 
 // Config Firebase Web (pública) — projeto compartilhado do relay
 firebase.initializeApp({
-    apiKey: "AIzaSyCNZROnEfmugb3f67OEczx1wvootyhda6s",
-    authDomain: "terminalconsultavct.firebaseapp.com",
-    projectId: "terminalconsultavct",
-    storageBucket: "terminalconsultavct.firebasestorage.app",
-    messagingSenderId: "167968538488",
-    appId: "1:167968538488:web:e01449c18d3e160374128d"
+    apiKey: "AIzaSyB0qYB1_PGQKPPbC377IyczcbLG8vsNsMQ",
+    authDomain: "sicprinter.firebaseapp.com",
+    projectId: "sicprinter",
+    storageBucket: "sicprinter.firebasestorage.app",
+    messagingSenderId: "186361915401",
+    appId: "1:186361915401:web:7e33f088960bff7df470d8",
+    measurementId: "G-G53F0Q3416"
 });
 const messaging = firebase.messaging();
 
