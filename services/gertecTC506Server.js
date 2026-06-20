@@ -1,36 +1,13 @@
 ﻿const net = require('net');
-const fs = require('fs');
-const path = require('path');
-const crypto = require('crypto');
 const { buscarPrecoLocal: buscarPrecoSicweb } = require('../routes/produtos');
 const { lerConfig } = require('./config');
 const push = require('./push');
-
-const DB_PATH = path.join(__dirname, '../data/temp/bdTempLeitura.json');
+const historico = require('./historico'); // serviço único do histórico (passo 2)
 
 // Nome amigável do terminal (apelido salvo > modelo > IP) para as notificações
 function nomeTerminal(t, ip) {
     const { APELIDOS = {} } = lerConfig();
     return (t && APELIDOS[t.serial]) || (t && t.modelo) || ip;
-}
-
-// --- Funções de Banco de Dados ---
-function lerHistorico() {
-    try {
-        if (fs.existsSync(DB_PATH)) {
-            const data = fs.readFileSync(DB_PATH, 'utf8');
-            return JSON.parse(data);
-        }
-    } catch (e) { console.error('Erro ao ler DB:', e.message); }
-    return [];
-}
-
-function salvarLeitura(leitura) {
-    if (!leitura.id) leitura.id = crypto.randomUUID(); // ID único p/ rastrear impressão individual
-    const hist = lerHistorico();
-    hist.unshift(leitura);
-    if (hist.length > 200) hist.pop();
-    fs.writeFileSync(DB_PATH, JSON.stringify(hist, null, 2));
 }
 
 // --- Função de Sanitização ---
@@ -102,13 +79,7 @@ module.exports = function (io) {
 
     // === SINCRONIZAÇÃO COM O FRONTEND ===
     io.on('connection', (socket) => {
-        socket.emit('historicoLeituras', lerHistorico());
         socket.emit('atualizarTerminaisTC', Object.values(terminais));
-
-        socket.on('limparHistorico', () => {
-            fs.writeFileSync(DB_PATH, JSON.stringify([], null, 2));
-            io.emit('historicoLeituras', []);
-        });
 
         // 1. LISTAR MEMÓRIA
         socket.on('listarMidias', (data) => {
@@ -383,7 +354,6 @@ module.exports = function (io) {
             }
 
             // Exibe Erro se não achou em nenhuma tentativa
-// Exibe Erro se não achou em nenhuma tentativa
             if (!produto) {
                 io.emit('logDebug', { ip, msg: `[AVISO] Produto não encontrado em nenhuma das tentativas.` });
                 const pClear = criarPacote(IDvDispClear, Buffer.from([0x04, 0x01]));
@@ -400,8 +370,7 @@ module.exports = function (io) {
                     hora: new Date().toLocaleTimeString('pt-BR'),
                     status: 'erro'
                 };
-                salvarLeitura(leituraErro);
-                io.emit('novaLeitura', leituraErro);
+                historico.registrar(leituraErro); // persiste + avisa consumidores (ponte/WS)
                 push.notificar('produto_nao_encontrado', { codigo, terminal: nomeTerminal(terminais[ip], ip) }, {
                     chaveCooldown: `nf:${codigo}`
                 });
@@ -419,12 +388,10 @@ module.exports = function (io) {
                 status: 'ok'
             };
             
-            salvarLeitura(leitura);
-            io.emit('novaLeitura', leitura);
+            historico.registrar(leitura); // persiste + avisa consumidores (ponte/WS)
             push.contabilizarBusca(codigo, produto.nome, lerConfig().PUSH_BUSCAS_LIMITE, leitura.id);
 
                 // 1. Função interna rápida para limpar acentos (remove Á, Ç, õ, etc)
-// 1. Função interna rápida para limpar acentos
                 const removerAcentos = (str) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
                 const nomeSemAcentos = removerAcentos(produto.nome);
                 const nomeExibicao = nomeSemAcentos.length > 25 ? nomeSemAcentos.substring(0, 22) + '...' : nomeSemAcentos;

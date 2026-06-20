@@ -19,23 +19,13 @@
  *  Contrato completo: ver spec "API HTTP do SIC Printer".
  * ════════════════════════════════════════════════════════════════════════════ */
 
-const path   = require('path');
-const fs     = require('fs');
 const crypto = require('crypto');
 const QRCode = require('qrcode');
 const { query, queryOne } = require('../database');
+// Store/tokens compartilhados com o WebSocket do app (sem duplicar a comparação).
+const { lerStore, salvarStore, novoToken, tokensIguais } = require('../services/sicprinterStore');
 
 const VERSAO = '1.0.0';
-
-// ── Armazenamento dos tokens/estado (separado do config.json do ERP) ──────────
-const STORE_PATH = path.join(__dirname, '..', 'data', 'sicprinter.json');
-
-function lerStore() {
-    try {
-        if (fs.existsSync(STORE_PATH)) return JSON.parse(fs.readFileSync(STORE_PATH, 'utf8'));
-    } catch (e) { console.error('[SICPRINTER] Erro ao ler store:', e.message); }
-    return { habilitado: false, tokenLeitura: '', tokenEscrita: '', criadoEm: null };
-}
 
 // Nome da empresa vem SEMPRE do SQL (TABSICINI [Geral].Empresa) — não é digitado.
 async function lerEmpresa() {
@@ -46,25 +36,6 @@ async function lerEmpresa() {
     } catch (e) {
         return '';
     }
-}
-
-function salvarStore(s) {
-    fs.mkdirSync(path.dirname(STORE_PATH), { recursive: true });
-    fs.writeFileSync(STORE_PATH, JSON.stringify(s, null, 2));
-}
-
-function novoToken() {
-    // 32 bytes aleatórios em base64url — segredo opaco e revogável.
-    return crypto.randomBytes(32).toString('base64url');
-}
-
-// ── Comparação de token em tempo constante (evita timing attack) ──────────────
-function tokensIguais(a, b) {
-    if (!a || !b) return false;
-    const ba = Buffer.from(String(a));
-    const bb = Buffer.from(String(b));
-    if (ba.length !== bb.length) return false;        // length-safe: tamanhos iguais
-    return crypto.timingSafeEqual(ba, bb);
 }
 
 // ── Helpers de resposta de erro (formato comum da spec) ───────────────────────

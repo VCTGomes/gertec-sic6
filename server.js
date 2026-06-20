@@ -161,6 +161,26 @@ app.post('/api/push/marcar-lido', async (req, res) => {
 // Mantido em arquivo próprio (routes/sicprinter-http.js) para auditoria fácil.
 require('./routes/sicprinter-http')(app);
 
+// ── Histórico de leituras (serviço desacoplado) ───────────────────────────────
+// Fonte única em services/historico.js. Aqui ficam só as PONTES de transporte:
+// Socket.IO (front atual) e HTTP. O WebSocket do app é montado logo abaixo.
+const historico = require('./services/historico');
+
+// Ponte Socket.IO: mantém o front atual funcionando sem nenhuma mudança no HTML.
+io.on('connection', (socket) => {
+    socket.emit('historicoLeituras', historico.lerTudo()); // carga inicial
+    socket.on('limparHistorico', () => historico.limpar());
+});
+historico.on('nova', (leitura) => io.emit('novaLeitura', leitura));
+historico.on('limpo', () => io.emit('historicoLeituras', []));
+
+// HTTP: front e (depois) app podem ler o histórico sem depender do WebSocket.
+app.get('/api/historico', (req, res) => res.json(historico.lerTudo()));
+app.post('/api/historico/limpar', (req, res) => { historico.limpar(); res.json({ ok: true }); });
+
+// WebSocket do app (/v1/historico/ws) — histórico ao vivo, Bearer no handshake.
+require('./services/appHistoricoWS')(server);
+
 // ── Serviços TCP ─────────────────────────────────────────────────────────────
 require('./services/gertecBPServer')(io);
 require('./services/gertecTC506Server')(io);
