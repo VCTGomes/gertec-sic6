@@ -1,107 +1,206 @@
 const fs   = require('fs');
 const path = require('path');
+const { queryOne } = require('../database');
+const db = require('./db'); // SQLite local (historico.db) — guarda nossa config
 
-// Tokens dos dispositivos que ativaram notificação (um por navegador/PWA)
-const KEYS_PATH    = path.join(__dirname, '..', 'data', 'push', 'keys.json');
-const RELAY_URL    = process.env.PUSH_RELAY_URL || 'https://webhook-tc.vctgomes.com/notify';
-const RELAY_SECRET = process.env.RELAY_SECRET || '';
+// ════════════════════════════════════════════════════════════════════════════
+//  PUSH — serviço unificado (busca-preco / sicprinter.vctgomes.com)
+//  ----------------------------------------------------------------------------
+//  O serviço na nuvem agora GUARDA os tokens, RENDERIZA os eventos (título/corpo/
+//  botões) e entrega por TÓPICO (`instalation-<id>`). Este módulo deixa de manter
+//  keys.json e de mandar tokens: ele só (1) faz proxy do subscribe/refresh dos
+//  navegadores (CORS) e (2) dispara eventos por instalação.
+//
+//  Autenticação dos disparos (`/api/push/event`) é por PERTENCIMENTO: o device_id
+//  que dispara precisa ser membro da instalação (ter feito /subscribe). Como o
+//  backend não é um navegador com token FCM, ele reaproveita os device_id que
+//  passaram pelo proxy do subscribe (guardados em data/push/membros.json) e, ao
+//  receber 403, descarta o membro inválido e tenta o próximo.
+// ════════════════════════════════════════════════════════════════════════════
 
-// Cada registro é { device_id, token }. Formato legado (array de strings) é
-// normalizado na leitura para manter compatibilidade com keys.json antigos.
-function lerRegistros() {
-    let dados;
-    try { dados = JSON.parse(fs.readFileSync(KEYS_PATH, 'utf8')); }
-    catch { return []; }
-    if (!Array.isArray(dados)) return [];
-    return dados.map(r =>
-        typeof r === 'string' ? { device_id: null, token: r } : r
-    ).filter(r => r && typeof r.token === 'string' && r.token);
+const PUSH_BASE    = (process.env.PUSH_BASE_URL || 'https://sicprinter.vctgomes.com').replace(/\/+$/, '');
+const MEMBROS_PATH = path.join(__dirname, '..', 'data', 'push', 'membros.json');
+
+// ── Config local (historico.db) ───────────────────────────────────────────────
+// Tabela chave/valor para guardar config NOSSA (ex.: um instalationId gerado
+// quando o cliente ainda não tem um). NUNCA escrevemos no SQL do cliente.
+db.exec(`CREATE TABLE IF NOT EXISTS CONFIG (chave TEXT PRIMARY KEY, valor TEXT)`);
+const stmtGetConfig = db.prepare(`SELECT valor FROM CONFIG WHERE chave = ?`);
+const stmtSetConfig = db.prepare(`
+    INSERT INTO CONFIG (chave, valor) VALUES (@chave, @valor)
+    ON CONFLICT(chave) DO UPDATE SET valor = excluded.valor`);
+function getConfig(chave) { const r = stmtGetConfig.get(chave); return r ? r.valor : null; }
+function setConfig(chave, valor) { stmtSetConfig.run({ chave, valor: String(valor) }); }
+
+// ── instalation_id ────────────────────────────────────────────────────────────
+// Credencial dos eventos (1–10 chars [A-Za-z0-9]).
+// Fonte da verdade: SQL do cliente (TABARQUIVOS IDENT='SIC_PRINTER' → TEXTO JSON →
+// `instalationId`) — só LEITURA, nunca escrevemos lá. Se o cliente ainda não tem
+// um, geramos um NOSSO e guardamos no historico.db (CONFIG), reaproveitando depois.
+let cacheInstalationId = null;
+
+function sanitizarId(v) {
+    return String(v || '').replace(/[^A-Za-z0-9]/g, '').slice(0, 10);
 }
 
-function salvarRegistros(arr) {
-    fs.mkdirSync(path.dirname(KEYS_PATH), { recursive: true });
-    fs.writeFileSync(KEYS_PATH, JSON.stringify(arr, null, 2));
+function gerarId() {
+    const abc = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    const buf = require('crypto').randomBytes(10);
+    let s = '';
+    for (let i = 0; i < 10; i++) s += abc[buf[i] % abc.length];
+    return s;
 }
 
-// Lista de tokens (strings) para envio ao relay.
-function lerTokens() {
-    return lerRegistros().map(r => r.token);
-}
+async function instalationId() {
+    if (cacheInstalationId) return cacheInstalationId;
 
-// Associa token a um device_id. Se o device já existe, atualiza o token;
-// caso contrário, cria o registro. Sem device_id, faz dedupe pelo token (legado).
-function registrarToken(token, deviceId) {
-    if (!token || typeof token !== 'string') return false;
-    const registros = lerRegistros();
-
-    if (deviceId && typeof deviceId === 'string') {
-        const reg = registros.find(r => r.device_id === deviceId);
-        if (reg) {
-            if (reg.token !== token) {
-                reg.token = token;
-                salvarRegistros(registros);
-                console.log(`[PUSH] Token atualizado para device ${deviceId}.`);
-            }
-        } else {
-            // Adota registro legado (device_id null) de mesmo token p/ evitar duplicar.
-            const legado = registros.find(r => !r.device_id && r.token === token);
-            if (legado) {
-                legado.device_id = deviceId;
-                salvarRegistros(registros);
-                console.log(`[PUSH] Device ${deviceId} associado a token existente.`);
-            } else {
-                registros.push({ device_id: deviceId, token });
-                salvarRegistros(registros);
-                console.log(`[PUSH] Novo dispositivo registrado (${registros.length} no total).`);
-            }
+    // 1) Fonte da verdade: SQL do cliente (apenas leitura).
+    try {
+        const row = await queryOne(
+            `SELECT TOP 1 TEXTO FROM TABARQUIVOS WHERE IDENT = 'SIC_PRINTER'`);
+        const texto = row && row.TEXTO != null ? String(row.TEXTO) : null;
+        let idSql = null;
+        if (texto) {
+            try { idSql = sanitizarId((JSON.parse(texto) || {}).instalationId); }
+            catch { idSql = null; }
         }
-        return true;
+        if (idSql) { cacheInstalationId = idSql; return idSql; }
+    } catch (e) {
+        // SQL indisponível: não geramos um novo aqui (o cliente pode ter um id que
+        // só não conseguimos ler agora). Usa o local se já existir; senão, espera.
+        console.error('[PUSH] Falha ao ler instalationId do SQL:', e.message);
+        const local = sanitizarId(getConfig('instalationId'));
+        if (local) { cacheInstalationId = local; return local; }
+        return null;
     }
 
-    if (!registros.some(r => r.token === token)) {
-        registros.push({ device_id: null, token });
-        salvarRegistros(registros);
-        console.log(`[PUSH] Novo dispositivo registrado (${registros.length} no total).`);
+    // 2) Cliente não tem instalationId no SQL: usamos um id NOSSO (historico.db).
+    let idLocal = sanitizarId(getConfig('instalationId'));
+    if (!idLocal) {
+        idLocal = gerarId();
+        setConfig('instalationId', idLocal);
+        console.log(`[PUSH] instalationId ausente no SQL; gerado e guardado localmente: ${idLocal}`);
     }
-    return true;
+    cacheInstalationId = idLocal;
+    return idLocal;
 }
 
-// Reenvio fire-and-forget a cada abertura da página: confirma/atualiza o token
-// do device. Como os tokens do FCM rotacionam, se divergir do cadastrado o novo
-// prevalece. Se o device ainda não existe, registra.
-function refreshToken(deviceId, token) {
-    if (!deviceId || typeof deviceId !== 'string') return false;
-    if (!token || typeof token !== 'string') return false;
-    const registros = lerRegistros();
-    const reg = registros.find(r => r.device_id === deviceId);
-    if (!reg) {
-        // Adota registro legado (device_id null) de mesmo token p/ evitar duplicar.
-        const legado = registros.find(r => !r.device_id && r.token === token);
-        if (legado) {
-            legado.device_id = deviceId;
-            salvarRegistros(registros);
-            console.log(`[PUSH] Device ${deviceId} associado a token existente via refresh.`);
-        } else {
-            registros.push({ device_id: deviceId, token });
-            salvarRegistros(registros);
-            console.log(`[PUSH] Device ${deviceId} registrado via refresh (${registros.length} no total).`);
+// ── Membros (device_id que podem disparar eventos) ────────────────────────────
+function lerMembros() {
+    try {
+        const a = JSON.parse(fs.readFileSync(MEMBROS_PATH, 'utf8'));
+        return Array.isArray(a) ? a.filter(m => m && typeof m.device_id === 'string') : [];
+    } catch { return []; }
+}
+
+function salvarMembros(arr) {
+    fs.mkdirSync(path.dirname(MEMBROS_PATH), { recursive: true });
+    fs.writeFileSync(MEMBROS_PATH, JSON.stringify(arr, null, 2));
+}
+
+// Registra/atualiza um membro, mais recente primeiro (é o primeiro a ser tentado
+// no disparo). Teto de sanidade para não crescer sem limite.
+function registrarMembro(deviceId) {
+    if (!deviceId || typeof deviceId !== 'string') return;
+    const membros = lerMembros().filter(m => m.device_id !== deviceId);
+    membros.unshift({ device_id: deviceId, ts: Date.now() });
+    salvarMembros(membros.slice(0, 50));
+}
+
+function removerMembro(deviceId) {
+    salvarMembros(lerMembros().filter(m => m.device_id !== deviceId));
+}
+
+// ── HTTP para o serviço unificado ─────────────────────────────────────────────
+async function enviar(rota, payload) {
+    try {
+        const resp = await fetch(`${PUSH_BASE}${rota}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+        const json = await resp.json().catch(() => ({}));
+        return { ok: resp.ok, status: resp.status, json };
+    } catch (e) {
+        console.error(`[PUSH] Falha em ${rota}:`, e.message);
+        return { ok: false, status: 0, json: { erro: e.message } };
+    }
+}
+
+// ── Proxy do subscribe (navegador → nuvem) ────────────────────────────────────
+// O navegador manda só { device_id, token, platform }. O backend injeta o
+// instalation_id (que nunca chega ao cliente) + os tópicos, e marca o device
+// como membro para poder disparar eventos depois.
+async function subscribe(body) {
+    const { device_id, token } = body || {};
+    const platform = (body && body.platform) || 'web';
+    if (!device_id || !token) return { ok: false, status: 400, json: { erro: 'device_id ou token ausente' } };
+
+    const id = await instalationId();
+    if (!id) return { ok: false, status: 503, json: { erro: 'instalation_id indisponível' } };
+
+    const payload = {
+        device_id,
+        token,
+        platform,
+        topics: ['geral', `instalation-${id}`],
+        receber_on: 1,
+    };
+    // Web recebe os eventos exclusivos GERTEC automaticamente (gertec_on=1).
+    if (platform === 'web') payload.gertec_on = 1;
+
+    const r = await enviar('/api/push/subscribe', payload);
+    if (r.ok) registrarMembro(device_id);
+    return r;
+}
+
+// ── Proxy do refresh de token (rotação do FCM) ────────────────────────────────
+async function refreshToken(body) {
+    const { device_id, token, oldToken } = body || {};
+    if (!device_id || !token) return { ok: false, status: 400, json: { erro: 'device_id ou token ausente' } };
+
+    const payload = { device_id, token };
+    if (oldToken) payload.oldToken = oldToken;
+
+    const r = await enviar('/api/push/refresh-token', payload);
+    if (r.ok) registrarMembro(device_id);
+    return r;
+}
+
+// ── Disparo de evento ─────────────────────────────────────────────────────────
+// Manda { instalation_id, device_id (membro), tag, extra }. O servidor valida,
+// sanitiza, renderiza e entrega por tópico. 403 = aquele membro não vale mais →
+// descarta e tenta o próximo. 429/outros erros não melhoram trocando de membro.
+async function dispararEvento(tag, extra = {}) {
+    const id = await instalationId();
+    if (!id) return { ok: false, motivo: 'instalation_id indisponível' };
+
+    const membros = lerMembros();
+    if (!membros.length) return { ok: false, motivo: 'nenhum dispositivo registrado' };
+
+    for (const m of membros) {
+        const resp = await enviar('/api/push/event', {
+            instalation_id: id,
+            device_id: m.device_id,
+            tag,
+            extra,
+        });
+        if (resp.ok) return { ok: true, ...resp.json };
+        if (resp.status === 403) {
+            console.warn(`[PUSH] Membro ${m.device_id} rejeitado (403). Removendo e tentando o próximo.`);
+            removerMembro(m.device_id);
+            continue;
         }
-    } else if (reg.token !== token) {
-        reg.token = token;
-        salvarRegistros(registros);
-        console.log(`[PUSH] Token rotacionado para device ${deviceId}.`);
+        // 429 (rate_limited), 400 (tag), 5xx, etc.: trocar de membro não ajuda.
+        return { ok: false, status: resp.status, ...resp.json };
     }
-    return true;
+    return { ok: false, motivo: 'sem membro válido' };
 }
 
-function removerTokens(invalidos) {
-    if (!Array.isArray(invalidos) || !invalidos.length) return;
-    const restantes = lerRegistros().filter(r => !invalidos.includes(r.token));
-    salvarRegistros(restantes);
-    console.log(`[PUSH] ${invalidos.length} token(s) inválido(s) removido(s).`);
-}
-
-// Evita flood: ignora envios repetidos da mesma chave dentro da janela
+// Evita flood local: ignora envios repetidos da mesma chave dentro da janela.
+// Complementa o rate-limit do servidor — útil sobretudo nas tags que o servidor
+// ISENTA do rate-limit (ex.: produto_nao_encontrado), onde leituras repetidas do
+// mesmo código não cadastrado disparariam sem parar.
 const ultimoEnvio = {};
 function emCooldown(chave, ms) {
     const agora = Date.now();
@@ -110,60 +209,28 @@ function emCooldown(chave, ms) {
     return false;
 }
 
-/**
- * Encaminha uma notificação para o relay, que valida/sanitiza e distribui via FCM.
- * O app só informa o `evento` + campos estruturados — a redação exibida é montada
- * no `sw.js` (cliente). Assim ninguém manda texto arbitrário (evita mau uso).
- * @param {string} evento  chave do catálogo (ex.: 'leitor_desconectado')
- * @param {object} [campos] campos do evento (ex.: { nome, ip, motivo })
- * @param {object} [opts]  { chaveCooldown, cooldownMs }
- */
-async function notificar(evento, campos = {}, opts = {}) {
+// Fachada usada pelos produtores (`push.notificar('tag', campos, opts)`). Mantém
+// o cooldown local opcional ({ chaveCooldown, cooldownMs }) e delega o resto ao
+// serviço unificado, que renderiza e entrega o evento.
+function notificar(tag, campos = {}, opts = {}) {
     const { chaveCooldown, cooldownMs = 60000 } = opts;
-
-    const tokens = lerTokens();
-    if (!tokens.length) return { ok: false, motivo: 'nenhum dispositivo registrado' };
     if (chaveCooldown && emCooldown(chaveCooldown, cooldownMs)) {
-        return { ok: false, motivo: 'cooldown' };
+        return Promise.resolve({ ok: false, motivo: 'cooldown' });
     }
-
-    try {
-        const resp = await fetch(RELAY_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                ...(RELAY_SECRET ? { Authorization: `Bearer ${RELAY_SECRET}` } : {})
-            },
-            body: JSON.stringify({ tokens, evento, ...campos })
-        });
-        const json = await resp.json().catch(() => ({}));
-        if (Array.isArray(json.invalidos)) removerTokens(json.invalidos);
-        return { ok: resp.ok, ...json };
-    } catch (e) {
-        console.error('[PUSH] Falha ao notificar:', e.message);
-        return { ok: false, erro: e.message };
-    }
+    return dispararEvento(tag, campos);
 }
 
-// Push reverso: dispara um data-only `evento=limpar` para todos os dispositivos.
-// Sem `id`, cada PC fecha TODAS as suas notificações ("marcar tudo como lido").
-// Com `id`, fecha só a notificação daquele item (ex.: ao imprimir um da fila).
-// Pequeno cooldown evita rajadas (ex.: vários PCs abrindo o painel ao mesmo tempo).
+// ── Push reverso "limpar" (marcar como lido) ──────────────────────────────────
+// Sem `id`, cada PC fecha TODAS as notificações; com `id`, só a daquele item.
 async function marcarLido(id) {
-    const campos = id ? { id: String(id) } : {};
-    return notificar('limpar', campos, {
-        chaveCooldown: id ? `limpar:${id}` : 'limpar',
-        cooldownMs: 1500
-    });
+    return dispararEvento('limpar', id ? { id: String(id) } : {});
 }
 
-// Conta consultas por código (em memória, reinicia junto com o serviço).
-// A cada múltiplo de `limite` buscas do mesmo código (no dia), dispara uma
-// notificação com botão "Imprimir preço".
-// A contagem é diária: no primeiro acesso de cada dia o objeto é trocado por
-// um novo {}, o que zera os contadores e libera da RAM os dados do dia anterior.
+// ── Produto muito buscado ─────────────────────────────────────────────────────
+// Conta consultas por código (em memória, diário). A cada múltiplo de `limite`
+// buscas do mesmo código no dia, dispara `produto_frequente` (com botão Imprimir).
 let contagemBuscas = {};
-let diaContagem = null; // 'YYYY-MM-DD' do dia atual da contagem (horário local)
+let diaContagem = null; // 'YYYY-M-D' local
 function diaLocal() {
     const d = new Date();
     return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
@@ -179,12 +246,17 @@ function contabilizarBusca(codigo, nome, limite, id) {
     }
     const n = (contagemBuscas[codigo] = (contagemBuscas[codigo] || 0) + 1);
     if (n % limite === 0) {
-        // `id` = leitura que cruzou o limite; o SW repassa pra registrar a impressão.
-        notificar('produto_frequente', { codigo, nome, n, ...(id ? { id } : {}) }, {
-            chaveCooldown: `bm:${codigo}`,
-            cooldownMs: 60000
-        });
+        dispararEvento('produto_frequente', { codigo, nome, n, ...(id ? { id: String(id) } : {}) });
     }
 }
 
-module.exports = { registrarToken, refreshToken, removerTokens, notificar, marcarLido, contabilizarBusca, lerTokens };
+module.exports = {
+    instalationId,
+    subscribe,
+    refreshToken,
+    registrarMembro,
+    dispararEvento,
+    notificar,
+    marcarLido,
+    contabilizarBusca,
+};

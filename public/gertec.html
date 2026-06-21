@@ -1090,8 +1090,10 @@
             const reg = swRegistration || await navigator.serviceWorker.register('/sw.js');
             const messaging = firebase.messaging();
             messaging.onMessage((payload) => {
+                // O conteúdo agora é renderizado no servidor; repassa o payload
+                // inteiro pro SW (título/corpo/botões vêm em webpush.notification).
                 const sw = reg.active || navigator.serviceWorker.controller;
-                if (sw) sw.postMessage({ type: 'fcm-foreground', data: payload.data || {} });
+                if (sw) sw.postMessage({ type: 'fcm-foreground', payload: payload || {} });
             });
             return messaging.getToken({
                 vapidKey: self.FIREBASE_VAPID_KEY,
@@ -1111,7 +1113,7 @@
                 fetch('/api/push/refresh-token', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ token, device_id: obterDeviceId() }),
+                    body: JSON.stringify({ token, device_id: obterDeviceId(), platform: 'web' }),
                     keepalive: true
                 }).catch(() => {});
             } catch (e) {
@@ -1147,10 +1149,10 @@
                 const token = await obterTokenFCM();
                 if (!token) return msgPush('Não foi possível obter o token.', false);
 
-                const res = await fetch('/api/push/register', {
+                const res = await fetch('/api/push/subscribe', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ token, device_id: obterDeviceId() })
+                    body: JSON.stringify({ token, device_id: obterDeviceId(), platform: 'web' })
                 });
                 if (!res.ok) throw new Error('falha ao registrar no servidor');
                 msgPush('Notificações ativadas neste dispositivo!', true);
@@ -1181,8 +1183,8 @@
             try {
                 const res = await fetch('/api/push/test', { method: 'POST' });
                 const data = await res.json();
-                if (data.ok) msgPush(`Teste enviado para ${data.enviados || 0} dispositivo(s).`, true);
-                else msgPush('Falha: ' + (data.motivo || data.erro || 'sem dispositivos'), false);
+                if (data.ok) msgPush('Teste enviado para a instalação!', true);
+                else msgPush('Falha: ' + (data.motivo || data.reason || data.erro || 'sem dispositivos'), false);
             } catch (e) {
                 msgPush('Erro ao testar: ' + e.message, false);
             }

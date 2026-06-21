@@ -1,8 +1,10 @@
-/* Service Worker de notificações push (Firebase Cloud Messaging). */
+/* Service Worker de notificações push (Firebase Cloud Messaging).
+ */
 importScripts('https://www.gstatic.com/firebasejs/12.14.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/12.14.0/firebase-messaging-compat.js');
 
-// Config Firebase Web (pública) — projeto compartilhado do relay
+// Config Firebase Web (pública) — mesmo projeto que emite os tokens (sicprinter),
+// para que o serviço unificado consiga entregar.
 firebase.initializeApp({
     apiKey: "AIzaSyB0qYB1_PGQKPPbC377IyczcbLG8vsNsMQ",
     authDomain: "sicprinter.firebaseapp.com",
@@ -34,81 +36,41 @@ function marcarTudoLido() {
     ]);
 }
 
-// Catálogo de frases (montado AQUI, no cliente — código aberto e transparente).
-// O backend/relay só trafegam o `evento` + campos estruturados e sanitizados; a
-// redação exibida vive neste arquivo. Cada entrada devolve { title, body } e, se
-// fizer sentido, `imprimir: true` para habilitar o botão de impressão.
-const EVENTOS = {
-    leitor_desconectado: (d) => ({
-        title: 'Leitor desconectado',
-        body: `${d.nome || 'Leitor'} ${d.motivo === 'queda' ? 'caiu (queda brusca).' : 'saiu do ar.'}`
-    }),
-    produto_nao_encontrado: (d) => ({
-        title: 'Produto não encontrado',
-        body: `Código ${d.codigo} em ${d.terminal || 'terminal'}`
-    }),
-    produto_frequente: (d) => ({
-        title: 'Produto muito buscado',
-        body: `${d.nome || 'Produto'} já foi consultado ${d.n}x`,
-        imprimir: true
-    }),
-    etiqueta_ligada: (d) => ({
-        title: 'Impressão de etiqueta ligada',
-        body: `Modo impressão ativo em ${d.terminal || 'terminal'} (1 min)`,
-        persistente: true
-    }),
-    teste: () => ({
-        title: 'GERTEC — Teste',
-        body: 'Notificações funcionando! 🎉'
-    })
-};
+// Exibe um payload já RENDERIZADO pelo servidor. Usado no PRIMEIRO PLANO (a página
+// repassa o payload, pois nesse caso o FCM não exibe sozinho). O comando `limpar`
+// é data-only: só fecha notificações, não exibe nada.
+function exibirPayload(payload) {
+    const data = (payload && payload.data) || {};
+    if (data.evento === 'limpar') return limparNotificacoes(data.id);
 
-// Monta as opções da notificação a partir do `evento` + campos (data-only).
-// Toda notificação ganha o botão "Marcar como lido". Eventos `imprimir` com um
-// código ganham o botão "Imprimir preço" lado a lado.
-function montarNotificacao(d) {
-    const fab = EVENTOS[d.evento];
-    const msg = fab ? fab(d) : { title: 'GERTEC', body: '' };
-
+    // O conteúdo vem pronto: prioriza o bloco webpush.notification do servidor.
+    const wn = (payload.webpush && payload.webpush.notification) || {};
+    const n  = payload.notification || {};
     const opts = {
-        body: msg.body || '',
-        icon: '/res/icons/icon_x512.png',
-        badge: '/res/icons/maskable_icon_x96.png',
-        data: d
+        body: wn.body || n.body || '',
+        icon: wn.icon || '/res/icons/icon_x512.png',
+        badge: wn.badge || '/res/icons/maskable_icon_x96.png',
+        data,
+        actions: Array.isArray(wn.actions) ? wn.actions : [],
+        requireInteraction: !!wn.requireInteraction,
     };
-    // `tag` = identidade da notificação. Permite fechar só ela depois (ex.: ao
-    // imprimir um item) e faz re-disparos do mesmo item substituírem o anterior.
-    if (d.id) opts.tag = String(d.id);
-    const actions = [];
-    if (msg.imprimir && d.codigo) {
-        actions.push({ action: 'imprimir', title: '🖨️ Imprimir preço' });
-        opts.requireInteraction = true;
-    }
-    // Notificação persistente sem botão de impressão (ex.: aviso de modo ativo).
-    if (msg.persistente) opts.requireInteraction = true;
-    actions.push({ action: 'lido', title: '✓ Marcar como lido' });
-    opts.actions = actions;
-    return [msg.title || 'GERTEC', opts];
+    if (wn.tag || data.id) opts.tag = String(wn.tag || data.id);
+    return self.registration.showNotification(wn.title || n.title || 'GERTEC', opts);
 }
 
-// Trata um `data` de notificação: ou limpa (push reverso) ou exibe.
-// Fonte única usada tanto no segundo plano quanto no primeiro plano (via postMessage).
-function exibirOuLimpar(d) {
-    // Push reverso "limpar": só fecha as notificações, não exibe nada.
-    // Com `id`, fecha só a notificação daquele item; sem `id`, fecha todas.
-    if (d.evento === 'limpar') return limparNotificacoes(d.id);
-    const [titulo, opts] = montarNotificacao(d);
-    return self.registration.showNotification(titulo, opts);
-}
+// SEGUNDO PLANO: para eventos renderizados, o navegador exibe a partir do bloco
+// `notification`/`webpush.notification` — não exibimos de novo (evita duplicar).
+// Só tratamos aqui o `limpar` (data-only, que o navegador não exibe).
+messaging.onBackgroundMessage((payload) => {
+    const data = (payload && payload.data) || {};
+    if (data.evento === 'limpar') return limparNotificacoes(data.id);
+});
 
-// Mensagens recebidas com a aba fechada / em segundo plano
-messaging.onBackgroundMessage((payload) => exibirOuLimpar(payload.data || {}));
-
-// Mensagens recebidas com a aba EM FOCO: o FCM entrega na página, que apenas
-// repassa o `data` pra cá. Assim a lógica de montar/exibir vive só no SW.
+// PRIMEIRO PLANO (aba em foco): o FCM entrega na página, que repassa o payload
+// inteiro pra cá. Assim a exibição vive só no SW.
 self.addEventListener('message', (event) => {
     const msg = event.data || {};
-    if (msg.type === 'fcm-foreground') event.waitUntil(exibirOuLimpar(msg.data || {}));
+    if (msg.type === 'fcm-foreground') event.waitUntil(exibirPayload(msg.payload || {}));
 });
 
 self.addEventListener('notificationclick', (event) => {
@@ -123,8 +85,7 @@ self.addEventListener('notificationclick', (event) => {
 
     // Botão "Imprimir preço" → imprime e limpa SOMENTE este item. A notificação
     // clicada já foi fechada acima; o /api/imprimir-preco dispara o push reverso
-    // direcionado (por `id`) que fecha a mesma notificação nos demais PCs. As
-    // outras notificações da fila permanecem.
+    // direcionado (por `id`) que fecha a mesma notificação nos demais PCs.
     if (event.action === 'imprimir' && d.codigo) {
         event.waitUntil(
             fetch('/api/imprimir-preco', {

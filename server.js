@@ -102,29 +102,25 @@ app.post('/api/imprimir-preco', async (req, res) => {
 // ── Notificações Push ─────────────────────────────────────────────────────────
 const push = require('./services/push');
 
-// O navegador/PWA registra aqui o token do FCM após ativar as notificações
-app.post('/api/push/register', (req, res) => {
-    const { token, device_id } = req.body || {};
-    if (!push.registrarToken(token, device_id)) {
-        return res.status(400).json({ erro: 'token inválido' });
-    }
-    res.json({ ok: true });
+// O navegador/PWA registra aqui o token do FCM após ativar as notificações.
+// O backend faz proxy (CORS) para o serviço unificado, injetando o instalation_id
+// e os tópicos — o navegador nunca vê a credencial da loja.
+app.post('/api/push/subscribe', async (req, res) => {
+    const r = await push.subscribe(req.body);
+    res.status(r.status || (r.ok ? 200 : 500)).json(r.json || { ok: r.ok });
 });
 
-// Reenvio fire-and-forget a cada abertura da página: confirma o token do device
-// e, se o FCM o rotacionou, atualiza no cadastro. Só é chamado quando as
-// notificações já estão ativadas (não dispara pedido de permissão).
-app.post('/api/push/refresh-token', (req, res) => {
-    const { token, device_id } = req.body || {};
-    if (!push.refreshToken(device_id, token)) {
-        return res.status(400).json({ erro: 'token ou device_id inválido' });
-    }
-    res.json({ ok: true });
+// Reenvio fire-and-forget a cada abertura da página: confirma/rotaciona o token
+// do device no serviço unificado. Só é chamado quando as notificações já estão
+// ativadas (não dispara pedido de permissão).
+app.post('/api/push/refresh-token', async (req, res) => {
+    const r = await push.refreshToken(req.body);
+    res.status(r.status || (r.ok ? 200 : 500)).json(r.json || { ok: r.ok });
 });
 
-// Dispara uma notificação de teste para todos os dispositivos registrados
+// Dispara uma notificação de teste para a instalação
 app.post('/api/push/test', async (req, res) => {
-    res.json(await push.notificar('teste'));
+    res.json(await push.dispararEvento('teste'));
 });
 
 // Push reverso: marca tudo como lido (limpa notificações) em todos os PCs
