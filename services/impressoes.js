@@ -24,9 +24,19 @@ function normalizar(codigo) {
     return c.replace(/^0+/, '') || c;
 }
 
-// ISO de N dias atrás (janela de consulta e de retenção)
+// ISO de N dias atrás (retenção — janela corrida, só para a purga)
 function isoDiasAtras(dias) {
     return new Date(Date.now() - dias * 86400_000).toISOString();
+}
+
+// ISO da meia-noite local de N-1 dias atrás — dias=1 devolve o início de hoje.
+// A consulta é por DIA de calendário, igual à janela da aba Precificação
+// (services/precificacao.js), senão "Hoje" traria impressões de ontem à noite.
+function isoInicioDoDia(dias) {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() - (dias - 1));
+    return d.toISOString();
 }
 
 const stmtInserir = db.prepare(`
@@ -71,7 +81,7 @@ function parsePreco(v) {
 // Impressões dos últimos `dias` (teto de 7 — não há dado além disso).
 function listar(dias = DIAS_RETENCAO, limite = LIMITE_PADRAO) {
     const d = Math.min(Math.max(parseInt(dias) || DIAS_RETENCAO, 1), DIAS_RETENCAO);
-    return stmtListar.all(isoDiasAtras(d), Math.max(parseInt(limite) || LIMITE_PADRAO, 1));
+    return stmtListar.all(isoInicioDoDia(d), Math.max(parseInt(limite) || LIMITE_PADRAO, 1));
 }
 
 // Última impressão de cada código pedido, dentro da janela de retenção.

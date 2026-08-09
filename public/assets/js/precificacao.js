@@ -166,6 +166,10 @@ function precTrocarJanela(dias) {
         b.classList.toggle('is-active', Number(b.dataset.precJanela) === _precJanela);
     });
     carregarPrecificacao();
+    // O painel de impressões usa a mesma janela — só recarrega se estiver aberto.
+    if (!document.getElementById('painelImpressoes')?.classList.contains('hidden')) {
+        carregarImpressoesPrec();
+    }
 }
 
 function filtrarPrecificacao() {
@@ -220,24 +224,28 @@ async function imprimirEtiquetaPrec(i) {
     }
 }
 
-// ── Histórico de impressões (todas as origens, 7 dias) ───────────────────────
+// ── Histórico de impressões (todas as origens, mesma janela da aba) ──────────
 async function carregarImpressoesPrec() {
     const tbody = document.getElementById('tabelaImpressoes');
     if (!tbody) return;
+
+    const janela = _PREC_JANELAS[_precJanela] || '';
+    const sub = document.querySelector('#cabecalhoImpressoes .g-sechead__sub');
+    if (sub) sub.innerText = `${janela} · estoque, app e terminais`;
 
     tbody.innerHTML = `<tr><td colspan="4"><div class="g-tableempty">
         <i class="fa-solid fa-circle-notch fa-spin"></i>Carregando...
     </div></td></tr>`;
 
     try {
-        const r = await fetch('/api/impressoes?dias=7');
+        const r = await fetch(`/api/impressoes?dias=${_precJanela}`);
         const d = await r.json();
         if (!r.ok || !d.ok) throw new Error(d.erro || 'Falha ao carregar');
 
         const itens = d.data || [];
         if (!itens.length) {
             tbody.innerHTML = `<tr><td colspan="4"><div class="g-tableempty">
-                Nenhuma etiqueta impressa nos últimos 7 dias.
+                Nenhuma etiqueta impressa ${janela}.
             </div></td></tr>`;
             return;
         }
