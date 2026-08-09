@@ -244,12 +244,16 @@ body.nv-body {
 .g-hits        { font-weight: 700; color: var(--md-sys-color-primary); }
 .g-row-alert td { background: var(--rmf-danger-fill); }
 
-/* Estado vazio / carregando dentro da tabela */
+/* Estado vazio / carregando dentro da tabela.
+   Ícone e texto na mesma linha, centrados como um grupo: o <i> em display:block
+   ficava centrado pela largura MÍNIMA da tabela (min-width), não pela do texto,
+   e desencontrava do rótulo. O flex resolve os dois eixos de uma vez. */
 .g-tableempty {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
   padding: 48px 16px; text-align: center;
   color: var(--md-sys-color-on-surface-variant); font-size: 14px;
 }
-.g-tableempty i { display: block; font-size: 20px; margin-bottom: 8px; opacity: .8; }
+.g-tableempty i { font-size: 16px; line-height: 1; opacity: .8; }
 .g-tableempty--error { color: var(--md-sys-color-error); font-weight: 600; }
 
 /* Realce da leitura recém-chegada */
