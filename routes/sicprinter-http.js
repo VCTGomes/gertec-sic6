@@ -23,6 +23,7 @@ const crypto = require('crypto');
 const QRCode = require('qrcode');
 const { query, queryOne } = require('../database');
 const historico = require('../services/historico'); // registra leitura/impressão do app
+const impressoes = require('../services/impressoes'); // histórico unificado de etiquetas
 // Store/tokens compartilhados com o WebSocket do app (sem duplicar a comparação).
 const { lerStore, salvarStore, novoToken, tokensIguais } = require('../services/sicprinterStore');
 
@@ -292,6 +293,22 @@ module.exports = function (app) {
         const b = req.body || {};
         const codigo = b.codigo != null ? String(b.codigo).trim() : '';
         if (!codigo) return erro(res, 400, 'CODIGO_AUSENTE', 'codigo obrigatório');
+
+        // Registra no histórico unificado de etiquetas — é isso que faz a
+        // impressão do celular aparecer na Precificação (origem 'app') e entrar
+        // na comparação preço-da-gôndola × preço-do-sistema.
+        // Falha aqui não pode derrubar a resposta ao app: o registro é secundário
+        // (o celular já imprimiu) e o `rota` transformaria a exceção em 500.
+        try {
+            impressoes.registrar({
+                codigo,
+                nome:   b.descricao != null ? String(b.descricao).trim() : null,
+                preco:  b.preco,
+                origem: 'app',
+            });
+        } catch (e) {
+            console.error(`[IMPRESSOES] Falha ao registrar ${codigo} (app):`, e.message);
+        }
 
         // 1) Existe leitura desse código? Anexa a impressão a ela (idempotente).
         const existente = historico.ultimaPorCodigo(codigo);

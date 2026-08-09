@@ -608,12 +608,14 @@
         async function imprimirEtiqueta(codigo, id) {
             if (!codigo || codigo === '-') return;
             // Feedback imediato: marca a leitura como impressa (o servidor confirma via socket)
-            if (id) { impressos.add(id); renderizarLeituras(false); }
+            if (id) { impressos.add(id); renderizarImpressos(); }
             try {
                 await fetch('/api/imprimir-preco', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ codigo, id })
+                    // 'terminal': a leitura veio de um BP/TC-506 e a etiqueta foi
+                    // impressa daqui, do painel. 'app' é só o SIC Printer do celular.
+                    body: JSON.stringify({ codigo, id, origem: 'terminal' })
                 });
             } catch (e) {
                 console.error('Erro ao solicitar impressão:', e);
@@ -985,7 +987,10 @@
         function agruparProdutos(leituras) {
             const contagem = {};
             leituras.forEach(l => {
-                if (!contagem[l.codigo]) contagem[l.codigo] = { codigo: l.codigo, nome: l.nome, preco: l.preco, qtd: 0, erro: (l.status === 'erro' || l.nome === 'NÃO ENCONTRADO') };
+                // `leituras` vem da mais nova para a mais antiga: o primeiro `id`
+                // visto de cada código é o da leitura mais recente — é essa que o
+                // servidor marca como impressa, então é ela que o botão referencia.
+                if (!contagem[l.codigo]) contagem[l.codigo] = { codigo: l.codigo, id: l.id, nome: l.nome, preco: l.preco, qtd: 0, erro: (l.status === 'erro' || l.nome === 'NÃO ENCONTRADO') };
                 contagem[l.codigo].qtd++;
                 if (contagem[l.codigo].erro && l.status === 'ok') { contagem[l.codigo].nome = l.nome; contagem[l.codigo].preco = l.preco; contagem[l.codigo].erro = false; }
             });
@@ -993,6 +998,7 @@
         }
 
         function linhaRankingProduto(item, index) {
+            const jaImpresso = item.id && impressos.has(item.id);
             return `
                 <tr style="height:3.5rem;">
                     <td class="g-cell-center g-rank">#${index + 1}</td>
@@ -1001,11 +1007,19 @@
                     <td class="g-cell-price">${item.preco !== '-' ? item.preco : ''}</td>
                     <td class="g-cell-center g-hits">${item.qtd}x</td>
                     <td class="g-cell-center">
-                        <button onclick="imprimirEtiqueta('${item.codigo}')" class="g-print" title="Imprimir Etiqueta">
+                        <button onclick="imprimirEtiqueta('${item.codigo}', '${item.id || ''}')" class="g-print${jaImpresso ? ' g-print--done' : ''}" title="${jaImpresso ? 'Preço já impresso — imprimir novamente' : 'Imprimir Etiqueta'}">
                             <i class="fa-solid fa-print"></i>
                         </button>
                     </td>
                 </tr>`;
+        }
+
+        // Repinta tudo que mostra o selo "já impresso": o histórico e as duas
+        // listas de mais buscados (geral e por leitor).
+        function renderizarImpressos() {
+            renderizarLeituras(false);
+            calcularRanking();
+            if (leitorFiltro) renderizarRankingLeitor();
         }
 
         function calcularRanking() {
@@ -1113,8 +1127,8 @@
         });
 
         // Servidor confirmou que uma leitura teve o preço impresso
-        socket.on('leituraImpressa', (id) => { if (id) { impressos.add(id); renderizarLeituras(false); } });
-        socket.on('impressosLimpos', () => { impressos.clear(); renderizarLeituras(false); });
+        socket.on('leituraImpressa', (id) => { if (id) { impressos.add(id); renderizarImpressos(); } });
+        socket.on('impressosLimpos', () => { impressos.clear(); renderizarImpressos(); });
 
         async function carregarImpressos() {
             try {

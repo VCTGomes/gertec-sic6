@@ -139,12 +139,18 @@ app.post('/api/imprimir-preco', async (req, res) => {
 
     res.json({ ok: true });
 
+    // Nem todo chamador tem o id da leitura (ranking de produtos, ação da
+    // notificação sem id, integrações). Sem id, a impressão ficava registrada em
+    // `impressoes` mas nenhuma leitura era marcada — o front continuava mostrando
+    // o item como não impresso. Resolve pela leitura mais recente do código.
+    const idLeitura = id || historico.ultimaPorCodigo(codigo)?.id || null;
+
     // Marca a leitura individual como impressa (a ponte emite 'leituraImpressa')
-    if (id) {
-        historico.marcarImpresso(id);
+    if (idLeitura) {
+        historico.marcarImpresso(idLeitura);
         // Push reverso direcionado: fecha SÓ a notificação deste item nos demais
         // PCs, preservando as outras notificações ainda pendentes na fila.
-        push.marcarLido(id);
+        push.marcarLido(idLeitura);
     }
 
     // Registra no histórico unificado de impressões. O preço vem do SIC (mesma
@@ -155,7 +161,10 @@ app.post('/api/imprimir-preco', async (req, res) => {
             codigo,
             nome:   prod?.nome,
             preco:  prod?.preco,
-            origem: req.body?.origem || 'app',
+            // Sem origem declarada é o painel imprimindo uma leitura de terminal.
+            // 'app' aqui era mentira: o app do celular imprime sozinho e avisa
+            // pelo POST /v1/historico/impressao.
+            origem: req.body?.origem || 'terminal',
         });
     } catch (e) {
         console.error(`[IMPRESSOES] Falha ao registrar ${codigo}:`, e.message);
