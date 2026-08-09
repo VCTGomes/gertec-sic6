@@ -82,6 +82,9 @@ body.nv-body {
    sem a underline de largura cheia: só o indicador da aba ativa. */
 .g-appbar__nav { grid-area: nav; box-shadow: none; background: transparent; }
 .g-appbar__nav .nv-tab { height: 48px; }
+/* .term-icon é um <span> com mask (não fonte): iguala o tamanho ao dos ícones
+   FA das outras abas, já que o .nv-tab i do design system não o alcança. */
+.g-appbar__nav .nv-tab .term-icon { font-size: 18px; flex-shrink: 0; }
 .g-appbar__nav .nv-tab__badge { margin-left: 2px; }
 
 @media (min-width: 900px) {
