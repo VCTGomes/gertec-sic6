@@ -47,9 +47,9 @@
             <img src="/res/logo.png" alt="Logo MD" class="g-appbar__logo" onerror="this.style.display='none'">
             <h1 class="g-appbar__title">Monitor de Terminais</h1>
         </div>
-        <!-- Abas principais: Monitores (/) e Precificação (/precificacao) -->
+        <!-- Abas principais: Monitores (/monitor) e Precificação (/precificacao) -->
         <nav class="g-appbar__nav nv-tabs wco-no-drag" role="tablist">
-            <button id="tabTopBtn_monitores" onclick="mudarAbaPrincipal('monitores')" class="nv-tab tab-active">
+            <button id="tabTopBtn_monitor" onclick="mudarAbaPrincipal('monitor')" class="nv-tab tab-active">
                 <i class="fa-solid fa-display"></i> Monitores
             </button>
             <button id="tabTopBtn_precificacao" onclick="mudarAbaPrincipal('precificacao')" class="nv-tab">
@@ -83,7 +83,7 @@
             </section>
         </div>
 
-        <section class="g-card" id="view_monitores">
+        <section class="g-card" id="view_monitor">
             <div class="nv-tabs" role="tablist">
                 <button id="tabMainBtn_leituras" onclick="mudarAbaMain('leituras')" class="nv-tab tab-active">
                     <i class="fa-solid fa-barcode"></i> Leituras Recentes
@@ -234,7 +234,7 @@
                 </table>
             </div>
 
-            <div class="g-sechead g-sechead--sub g-sechead--click" onclick="togglePainelImpressoes()">
+            <div id="cabecalhoImpressoes" class="g-sechead g-sechead--sub g-sechead--click" onclick="togglePainelImpressoes()">
                 <h3 class="g-sechead__title">
                     Etiquetas Impressas
                     <span class="g-sechead__sub">últimos 7 dias · estoque, app e terminais</span>
@@ -621,12 +621,12 @@
         }
 
         // ── Navegação ↔ URL ─────────────────────────────────────────────────
-        // Dois níveis: a aba principal é o caminho (/ ou /precificacao) e, dentro
-        // de Monitores, a sub-aba é a query string (?recentes, ?maisbuscados,
-        // ?leitoresusados).
+        // Dois níveis: a aba principal é o caminho (/monitor ou /precificacao) e,
+        // dentro de Monitores, a sub-aba é a query string (?recentes,
+        // ?maisbuscados, ?leitoresusados).
         const ABA_PARAM = { leituras: 'recentes', ranking: 'maisbuscados', leitores: 'leitoresusados' };
         const PARAM_ABA = { recentes: 'leituras', maisbuscados: 'ranking', leitoresusados: 'leitores' };
-        const VIEWS = ['monitores', 'precificacao'];
+        const VIEWS = ['monitor', 'precificacao'];
         let abaAtual = 'leituras';   // sub-aba corrente de Monitores
 
         function abaDaURL() {
@@ -639,16 +639,16 @@
             // Compatibilidade com o endereço antigo (/?precificacao); o
             // replaceState da inicialização já reescreve para /precificacao.
             const q = (location.search || '').replace(/^\?/, '').split(/[&=]/)[0].toLowerCase();
-            return q === 'precificacao' ? 'precificacao' : 'monitores';
+            return q === 'precificacao' ? 'precificacao' : 'monitor';
         }
 
-        // URL canônica de um estado: /precificacao ou /?<sub-aba>
+        // URL canônica de um estado: /precificacao ou /monitor?<sub-aba>
         function urlDoEstado(view, aba) {
-            return view === 'precificacao' ? '/precificacao' : '/?' + (ABA_PARAM[aba] || 'recentes');
+            return view === 'precificacao' ? '/precificacao' : '/monitor?' + (ABA_PARAM[aba] || 'recentes');
         }
 
         function mudarAbaPrincipal(view, atualizarURL = true) {
-            if (!VIEWS.includes(view)) view = 'monitores';
+            if (!VIEWS.includes(view)) view = 'monitor';
             VIEWS.forEach(v => {
                 document.getElementById(`view_${v}`).classList.toggle('hidden', v !== view);
                 document.getElementById(`tabTopBtn_${v}`).classList.toggle('tab-active', v === view);
@@ -675,7 +675,7 @@
             });
             document.getElementById(`tabMain_${aba}`).classList.remove('hidden');
             document.getElementById(`tabMainBtn_${aba}`).classList.add('tab-active');
-            if (atualizarURL) history.pushState({ view: 'monitores', aba }, '', urlDoEstado('monitores', aba));
+            if (atualizarURL) history.pushState({ view: 'monitor', aba }, '', urlDoEstado('monitor', aba));
         }
 
         window.addEventListener('popstate', (e) => {

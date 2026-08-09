@@ -267,9 +267,12 @@ async function carregarImpressoesPrec() {
 function togglePainelImpressoes() {
     const painel  = document.getElementById('painelImpressoes');
     const chevron = document.getElementById('chevronImpressoes');
+    const cabec   = document.getElementById('cabecalhoImpressoes');
     if (!painel) return;
     const abrindo = painel.classList.contains('hidden');
     painel.classList.toggle('hidden', !abrindo);
+    // A divisória do cabeçalho só existe enquanto há painel aberto embaixo.
+    if (cabec) cabec.classList.toggle('is-open', abrindo);
     if (chevron) chevron.style.transform = abrindo ? '' : 'rotate(-90deg)';
     if (abrindo) carregarImpressoesPrec();
 }

@@ -145,8 +145,11 @@ body.nv-body {
   border-bottom: 1px solid var(--md-sys-color-outline-variant);
 }
 .g-sechead--sub  { background: var(--md-sys-color-surface-container); }
-.g-sechead--click { cursor: pointer; user-select: none; }
+/* Cabeçalho recolhível: sem borda quando fechado — encostado no fim do card,
+   a linha ficaria solta. Ela só aparece quando o painel abre e há o que separar. */
+.g-sechead--click { cursor: pointer; user-select: none; border-bottom-color: transparent; }
 .g-sechead--click:hover { background: var(--md-sys-color-surface-container-high); }
+.g-sechead--click.is-open { border-bottom-color: var(--md-sys-color-outline-variant); }
 .g-sechead__title {
   display: flex; align-items: center; gap: 8px; margin: 0; min-width: 0;
   font-size: 16px; font-weight: 500; line-height: 24px; letter-spacing: .15px;
