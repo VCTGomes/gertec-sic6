@@ -942,7 +942,7 @@
         }
 
         function linhaLeitura(leitura) {
-            const isErro = leitura.status === 'erro' || leitura.nome === '❌ NÃO ENCONTRADO';
+            const isErro = leitura.status === 'erro' || leitura.nome === 'NÃO ENCONTRADO';
             const jaImpresso = leitura.id && impressos.has(leitura.id);
             return `
                 <tr style="height:3.5rem;">
@@ -985,7 +985,7 @@
         function agruparProdutos(leituras) {
             const contagem = {};
             leituras.forEach(l => {
-                if (!contagem[l.codigo]) contagem[l.codigo] = { codigo: l.codigo, nome: l.nome, preco: l.preco, qtd: 0, erro: (l.status === 'erro' || l.nome === '❌ NÃO ENCONTRADO') };
+                if (!contagem[l.codigo]) contagem[l.codigo] = { codigo: l.codigo, nome: l.nome, preco: l.preco, qtd: 0, erro: (l.status === 'erro' || l.nome === 'NÃO ENCONTRADO') };
                 contagem[l.codigo].qtd++;
                 if (contagem[l.codigo].erro && l.status === 'ok') { contagem[l.codigo].nome = l.nome; contagem[l.codigo].preco = l.preco; contagem[l.codigo].erro = false; }
             });
