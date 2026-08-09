@@ -217,9 +217,9 @@
                     <div class="flex items-center gap-3 flex-wrap">
                         <div class="flex items-center gap-1">
                             <button data-prec-janela="1" onclick="precTrocarJanela(1)"
-                                    class="bg-gray-100 text-gray-600 px-3 py-1 rounded-lg text-xs font-bold transition">Hoje</button>
+                                    class="bg-blue-600 text-white px-3 py-1 rounded-lg text-xs font-bold transition">Hoje</button>
                             <button data-prec-janela="2" onclick="precTrocarJanela(2)"
-                                    class="bg-blue-600 text-white px-3 py-1 rounded-lg text-xs font-bold transition">Ontem</button>
+                                    class="bg-gray-100 text-gray-600 px-3 py-1 rounded-lg text-xs font-bold transition">Ontem</button>
                             <button data-prec-janela="7" onclick="precTrocarJanela(7)"
                                     class="bg-gray-100 text-gray-600 px-3 py-1 rounded-lg text-xs font-bold transition">7 dias</button>
                         </div>
@@ -495,6 +495,11 @@
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
+    <!-- Conectar Celular (SIC Printer HTTP) — script isolado e auditável -->
+    <script src="/assets/js/sicprinter.js"></script>
+    <!-- Precificação: precisa vir antes do bloco abaixo, que na inicialização
+         já seleciona a aba da URL e chama carregarPrecificacao(). -->
+    <script src="/assets/js/precificacao.js"></script>
     <script>
         const socket = io();
 
@@ -641,7 +646,7 @@
 
             // A Precificação consulta o SIC a cada abertura — não vale manter
             // em memória, o preço muda por fora (ESTOQUE e Delphi).
-            if (aba === 'precificacao' && typeof carregarPrecificacao === 'function') carregarPrecificacao();
+            if (aba === 'precificacao') carregarPrecificacao();
         }
 
         window.addEventListener('popstate', (e) => {
@@ -1286,8 +1291,5 @@
         carregarImpressos().then(() => renderizarLeituras(false));
         carregarApelidos();
     </script>
-    <!-- Conectar Celular (SIC Printer HTTP) — script isolado e auditável -->
-    <script src="/assets/js/sicprinter.js"></script>
-    <script src="/assets/js/precificacao.js"></script>
 </body>
 </html>

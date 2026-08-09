@@ -10,7 +10,7 @@
  * ════════════════════════════════════════════════════════════════════════════ */
 
 let _precItens         = [];   // resultado bruto da API
-let _precJanela        = 2;    // dias (1 = hoje, 2 = hoje e ontem, 7 = semana)
+let _precJanela        = 1;    // dias (1 = hoje, 2 = hoje e ontem, 7 = semana)
 let _precFiltro        = '';   // busca client-side
 let _precSoDivergentes = false;
 let _precCarregando    = false;
@@ -161,7 +161,7 @@ function _precRender() {
 
 // ── Controles ────────────────────────────────────────────────────────────────
 function precTrocarJanela(dias) {
-    _precJanela = parseInt(dias) || 2;
+    _precJanela = parseInt(dias) || 1;
     document.querySelectorAll('[data-prec-janela]').forEach(b => {
         const ativo = Number(b.dataset.precJanela) === _precJanela;
         b.classList.toggle('bg-blue-600',   ativo);

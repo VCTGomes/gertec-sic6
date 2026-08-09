@@ -20,7 +20,7 @@ const DIAS_MAX = 7;
 // Janela pedida, limitada a 1..7 dias (1 = hoje, 2 = hoje e ontem, ...)
 function janelaDias(v) {
     const n = parseInt(v);
-    if (!Number.isFinite(n)) return 2;
+    if (!Number.isFinite(n)) return 1;
     return Math.min(Math.max(n, 1), DIAS_MAX);
 }
 
