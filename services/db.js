@@ -41,6 +41,20 @@ db.exec(`
         impresso_em TEXT                                -- ISO quando impresso (ou NULL)
     );
     CREATE INDEX IF NOT EXISTS idx_leituras_codigo ON leituras(codigo);
+
+    -- Impressões de etiqueta de preço, de qualquer origem (ESTOQUE, app SIC
+    -- Printer, terminais). Retenção de 7 dias — ver services/impressoes.js.
+    CREATE TABLE IF NOT EXISTS impressoes (
+        seq         INTEGER PRIMARY KEY AUTOINCREMENT,
+        ts          TEXT NOT NULL,   -- ISO-8601 do servidor
+        codigo      TEXT,            -- como veio de quem imprimiu
+        codigo_norm TEXT,            -- sem zeros à esquerda (chave de busca)
+        nome        TEXT,
+        preco       REAL,            -- preço impresso na etiqueta
+        origem      TEXT             -- 'estoque' | 'app' | 'terminal'
+    );
+    CREATE INDEX IF NOT EXISTS idx_impressoes_ts   ON impressoes(ts);
+    CREATE INDEX IF NOT EXISTS idx_impressoes_norm ON impressoes(codigo_norm);
 `);
 
 // ── Migração única dos JSON antigos ───────────────────────────────────────────

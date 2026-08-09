@@ -109,6 +109,10 @@
                 <button id="tabMainBtn_leitores" onclick="mudarAbaMain('leitores')" class="flex-1 py-3.5 font-bold border-b-2 border-transparent text-gray-500 hover:text-blue-600 transition-colors flex justify-center items-center gap-2">
                     <i class="fa-solid fa-chart-simple"></i> Leitores Mais Usados
                 </button>
+                <button id="tabMainBtn_precificacao" onclick="mudarAbaMain('precificacao')" class="flex-1 py-3.5 font-bold border-b-2 border-transparent text-gray-500 hover:text-blue-600 transition-colors flex justify-center items-center gap-2">
+                    <i class="fa-solid fa-tag"></i> Precificação
+                    <span id="badgePrecificacao" class="hidden bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full"></span>
+                </button>
             </div>
 
             <div id="tabMain_leituras" class="flex flex-col">
@@ -193,6 +197,85 @@
                         </table>
                     </div>
                     <div id="pagLeitorBar"></div>
+                </div>
+            </div>
+
+            <!-- ── Precificação ─────────────────────────────────────────────
+                 Produtos com preço alterado (ESTOQUE ou SIC Delphi, via
+                 tabest1.ultreaj) cruzados com a última etiqueta impressa.
+                 O histórico de impressões é unificado: estoque, app e
+                 terminais, com retenção de 7 dias. ──────────────────────── -->
+            <div id="tabMain_precificacao" class="hidden flex-col">
+                <div class="px-4 sm:px-6 py-4 border-b border-gray-100 flex flex-wrap justify-between items-center gap-3 bg-white">
+                    <h3 class="font-semibold text-gray-700">
+                        Preços Alterados
+                        <span class="text-xs font-normal text-gray-500 ml-1">
+                            <span id="precResumoFiltrados">0</span> de <span id="precResumoTotal">0</span> ·
+                            <span id="precResumoDivergentes" class="text-red-600 font-bold">0</span> divergente(s)
+                        </span>
+                    </h3>
+                    <div class="flex items-center gap-3 flex-wrap">
+                        <div class="flex items-center gap-1">
+                            <button data-prec-janela="1" onclick="precTrocarJanela(1)"
+                                    class="bg-gray-100 text-gray-600 px-3 py-1 rounded-lg text-xs font-bold transition">Hoje</button>
+                            <button data-prec-janela="2" onclick="precTrocarJanela(2)"
+                                    class="bg-blue-600 text-white px-3 py-1 rounded-lg text-xs font-bold transition">Ontem</button>
+                            <button data-prec-janela="7" onclick="precTrocarJanela(7)"
+                                    class="bg-gray-100 text-gray-600 px-3 py-1 rounded-lg text-xs font-bold transition">7 dias</button>
+                        </div>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="chkPrecDivergentes" class="w-3.5 h-3.5 accent-red-500"
+                                   onchange="precToggleDivergentes()">
+                            <span class="text-xs font-semibold text-red-700 whitespace-nowrap">Só divergentes</span>
+                        </label>
+                        <input type="text" id="precBusca" oninput="filtrarPrecificacao()" placeholder="Filtrar por nome ou código..."
+                               class="border border-gray-300 rounded-lg px-3 py-1.5 text-xs w-52 focus:outline-none focus:ring-2 focus:ring-blue-300">
+                        <button onclick="carregarPrecificacao()"
+                                class="text-xs text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-2" title="Recarregar">
+                            <i class="fa-solid fa-arrows-rotate"></i> Atualizar
+                        </button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-gray-600 min-w-[860px]">
+                        <thead class="bg-gray-50 text-gray-700 text-xs uppercase font-semibold">
+                            <tr>
+                                <th class="px-4 py-4 border-b border-gray-100">Produto</th>
+                                <th class="px-4 py-4 border-b border-gray-100">Categoria</th>
+                                <th class="px-4 py-4 border-b border-gray-100 text-right">Preço Atual</th>
+                                <th class="px-4 py-4 border-b border-gray-100 text-right">Última Etiqueta</th>
+                                <th class="px-4 py-4 border-b border-gray-100 text-center">Impresso em</th>
+                                <th class="px-4 py-4 border-b border-gray-100 text-center">Situação</th>
+                                <th class="px-4 py-4 border-b border-gray-100 text-center">Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabelaPrecificacao" class="divide-y divide-gray-100">
+                            <tr><td colspan="7" class="text-center py-12 text-gray-400">Aguardando dados...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="px-4 sm:px-6 py-4 border-t border-gray-100 flex justify-between items-center bg-gray-50 cursor-pointer select-none"
+                     onclick="togglePainelImpressoes()">
+                    <h3 class="font-semibold text-gray-700">
+                        Etiquetas Impressas
+                        <span class="text-xs font-normal text-gray-500 ml-1">últimos 7 dias · estoque, app e terminais</span>
+                    </h3>
+                    <i id="chevronImpressoes" class="fa-solid fa-chevron-down text-gray-400 transition-transform duration-200"
+                       style="transform: rotate(-90deg)"></i>
+                </div>
+                <div id="painelImpressoes" class="hidden overflow-x-auto border-t border-gray-100">
+                    <table class="w-full text-left text-sm text-gray-600 min-w-[700px]">
+                        <thead class="bg-gray-50 text-gray-700 text-xs uppercase font-semibold">
+                            <tr>
+                                <th class="px-4 py-4 border-b border-gray-100">Produto</th>
+                                <th class="px-4 py-4 border-b border-gray-100 text-right">Preço Impresso</th>
+                                <th class="px-4 py-4 border-b border-gray-100 text-center">Quando</th>
+                                <th class="px-4 py-4 border-b border-gray-100 text-center">Origem</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabelaImpressoes" class="divide-y divide-gray-100"></tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -538,8 +621,8 @@
         }
 
         // ── Abas ↔ URL (query string: ?recentes, ?maisbuscados, ?leitoresusados) ──
-        const ABA_PARAM = { leituras: 'recentes', ranking: 'maisbuscados', leitores: 'leitoresusados' };
-        const PARAM_ABA = { recentes: 'leituras', maisbuscados: 'ranking', leitoresusados: 'leitores' };
+        const ABA_PARAM = { leituras: 'recentes', ranking: 'maisbuscados', leitores: 'leitoresusados', precificacao: 'precificacao' };
+        const PARAM_ABA = { recentes: 'leituras', maisbuscados: 'ranking', leitoresusados: 'leitores', precificacao: 'precificacao' };
 
         function abaDaURL() {
             const q = (location.search || '').replace(/^\?/, '').split(/[&=]/)[0].toLowerCase();
@@ -547,7 +630,7 @@
         }
 
         function mudarAbaMain(aba, atualizarURL = true) {
-            ['leituras', 'ranking', 'leitores'].forEach(a => {
+            ['leituras', 'ranking', 'leitores', 'precificacao'].forEach(a => {
                 document.getElementById(`tabMain_${a}`).classList.add('hidden');
                 document.getElementById(`tabMainBtn_${a}`).className = "flex-1 py-3.5 font-bold border-b-2 border-transparent text-gray-500 hover:text-blue-600 transition-colors flex justify-center items-center gap-2";
             });
@@ -555,6 +638,10 @@
             document.getElementById(`tabMainBtn_${aba}`).classList.replace('border-transparent', 'border-blue-600');
             document.getElementById(`tabMainBtn_${aba}`).classList.replace('text-gray-500', 'text-blue-700');
             if (atualizarURL) history.pushState({ aba }, '', '?' + (ABA_PARAM[aba] || 'recentes'));
+
+            // A Precificação consulta o SIC a cada abertura — não vale manter
+            // em memória, o preço muda por fora (ESTOQUE e Delphi).
+            if (aba === 'precificacao' && typeof carregarPrecificacao === 'function') carregarPrecificacao();
         }
 
         window.addEventListener('popstate', (e) => {
@@ -1201,5 +1288,6 @@
     </script>
     <!-- Conectar Celular (SIC Printer HTTP) — script isolado e auditável -->
     <script src="/assets/js/sicprinter.js"></script>
+    <script src="/assets/js/precificacao.js"></script>
 </body>
 </html>

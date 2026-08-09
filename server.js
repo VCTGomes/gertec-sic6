@@ -70,6 +70,65 @@ const historico = require('./services/historico');
 // Lista de IDs de leituras que já tiveram o preço impresso (consumida pelo front no load)
 app.get('/api/impressos', (req, res) => res.json(historico.lerImpressos()));
 
+// ── Histórico unificado de impressões de etiqueta (retenção de 7 dias) ────────
+// Alimentado por todas as origens: aba Precificação do ESTOQUE, app SIC Printer
+// e terminais. É a referência do preço que está de fato na gôndola.
+const impressoes = require('./services/impressoes');
+const { buscarPrecoLocal } = require('./routes/produtos');
+
+// Registra uma impressão feita por outro sistema (hoje: ESTOQUE).
+// Body: { codigo, nome?, preco?, origem? } — nome/preco são buscados no SIC
+// quando não vierem, para a etiqueta e o registro nunca divergirem.
+app.post('/api/impressoes', async (req, res) => {
+    const { codigo, nome, preco, origem } = req.body || {};
+    if (!codigo) return res.status(400).json({ ok: false, erro: 'Código ausente' });
+    try {
+        let n = nome, p = preco;
+        if (p === undefined || p === null || p === '') {
+            const prod = await buscarPrecoLocal(String(codigo));
+            if (prod) { n = n || prod.nome; p = prod.preco; }
+        }
+        const reg = impressoes.registrar({ codigo, nome: n, preco: p, origem: origem || 'estoque' });
+        if (!reg) return res.status(400).json({ ok: false, erro: 'Código inválido' });
+        res.json({ ok: true, impressao: reg });
+    } catch (e) {
+        res.status(500).json({ ok: false, erro: e.message });
+    }
+});
+
+// ── Precificação: produtos a imprimir (alterados) + o que já foi impresso ────
+const precificacao = require('./services/precificacao');
+
+// Produtos com preço reajustado na janela, cada um com a última etiqueta.
+app.get('/api/precificacao/alteracoes', async (req, res) => {
+    try {
+        res.json({ ok: true, ...(await precificacao.alteracoes(req.query.dias)) });
+    } catch (e) {
+        res.status(500).json({ ok: false, erro: e.message });
+    }
+});
+
+// Lista as impressões da janela (1..7 dias).
+app.get('/api/impressoes', (req, res) => {
+    try {
+        res.json({ ok: true, data: impressoes.listar(req.query.dias, req.query.limite) });
+    } catch (e) {
+        res.status(500).json({ ok: false, erro: e.message });
+    }
+});
+
+// Última impressão de cada código pedido — usado pela aba Precificação para
+// comparar o preço atual do SIC com o que saiu na etiqueta.
+// Body: { codigos: ['789...', ...] }
+app.post('/api/impressoes/ultimas', (req, res) => {
+    try {
+        const codigos = Array.isArray(req.body?.codigos) ? req.body.codigos : [];
+        res.json({ ok: true, data: impressoes.ultimasPorCodigos(codigos) });
+    } catch (e) {
+        res.status(500).json({ ok: false, erro: e.message });
+    }
+});
+
 // ── Impressão de Etiqueta ─────────────────────────────────────────────────────
 app.post('/api/imprimir-preco', async (req, res) => {
     const { codigo, id } = req.body;
@@ -83,6 +142,20 @@ app.post('/api/imprimir-preco', async (req, res) => {
         // Push reverso direcionado: fecha SÓ a notificação deste item nos demais
         // PCs, preservando as outras notificações ainda pendentes na fila.
         push.marcarLido(id);
+    }
+
+    // Registra no histórico unificado de impressões. O preço vem do SIC (mesma
+    // fonte que a impressora lê), então o registro reflete o que saiu na etiqueta.
+    try {
+        const prod = await buscarPrecoLocal(String(codigo));
+        impressoes.registrar({
+            codigo,
+            nome:   prod?.nome,
+            preco:  prod?.preco,
+            origem: req.body?.origem || 'app',
+        });
+    } catch (e) {
+        console.error(`[IMPRESSOES] Falha ao registrar ${codigo}:`, e.message);
     }
 
     const { IMPRESSORA_URL } = lerConfig();
