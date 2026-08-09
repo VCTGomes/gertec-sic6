@@ -17,10 +17,11 @@ let _precCarregando    = false;
 
 const _PREC_JANELAS = { 1: 'hoje', 2: 'hoje e ontem', 7: 'nos últimos 7 dias' };
 
+// `classe` = variante do badge M3 (rmf.css)
 const _PREC_SITUACOES = {
-    divergente:   { label: 'Divergente',   icone: 'fa-triangle-exclamation', classe: 'bg-red-100 text-red-700' },
-    ok:           { label: 'Impresso',     icone: 'fa-check',                classe: 'bg-emerald-100 text-emerald-700' },
-    sem_registro: { label: 'Sem etiqueta', icone: 'fa-minus',                classe: 'bg-gray-100 text-gray-500' },
+    divergente:   { label: 'Divergente',   icone: 'fa-triangle-exclamation', classe: 'nv-badge--down' },
+    ok:           { label: 'Impresso',     icone: 'fa-check',                classe: 'nv-badge--new' },
+    sem_registro: { label: 'Sem etiqueta', icone: 'fa-minus',                classe: 'nv-badge--tech' },
 };
 
 const _PREC_ORIGENS = {
@@ -56,9 +57,9 @@ async function carregarPrecificacao() {
 
     const tbody = document.getElementById('tabelaPrecificacao');
     if (tbody) {
-        tbody.innerHTML = `<tr><td colspan="7" class="text-center py-12 text-gray-400">
-            <i class="fa-solid fa-circle-notch fa-spin text-xl mb-2 block"></i>Carregando...
-        </td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7"><div class="g-tableempty">
+            <i class="fa-solid fa-circle-notch fa-spin"></i>Carregando...
+        </div></td></tr>`;
     }
 
     try {
@@ -72,9 +73,9 @@ async function carregarPrecificacao() {
     } catch (e) {
         _precItens = [];
         if (tbody) {
-            tbody.innerHTML = `<tr><td colspan="7" class="text-center py-12 text-red-400 font-semibold">
-                <i class="fa-solid fa-triangle-exclamation text-xl mb-2 block"></i>${_precEsc(e.message)}
-            </td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="7"><div class="g-tableempty g-tableempty--error">
+                <i class="fa-solid fa-triangle-exclamation"></i>${_precEsc(e.message)}
+            </div></td></tr>`;
         }
     } finally {
         _precCarregando = false;
@@ -112,10 +113,10 @@ function _precRender() {
     if (elFiltrados) elFiltrados.innerText = itens.length;
 
     if (!itens.length) {
-        tbody.innerHTML = `<tr><td colspan="7" class="text-center py-12 text-gray-400">
-            <i class="fa-solid fa-check text-xl mb-2 block text-emerald-400"></i>
+        tbody.innerHTML = `<tr><td colspan="7"><div class="g-tableempty">
+            <i class="fa-solid fa-check" style="color:var(--md-sys-color-success)"></i>
             Nenhum preço alterado ${_PREC_JANELAS[_precJanela] || ''}.
-        </td></tr>`;
+        </div></td></tr>`;
         return;
     }
 
@@ -125,33 +126,32 @@ function _precRender() {
         const org = _PREC_ORIGENS[p.origem_impressao];
 
         const etiqueta = (p.preco_impresso === null || p.preco_impresso === undefined)
-            ? '<span class="text-gray-300">—</span>'
-            : `<span class="${p.situacao === 'divergente' ? 'text-red-600 font-bold' : 'text-gray-600'}">${_precMoeda(p.preco_impresso)}</span>`;
+            ? '<span class="g-cell-faint">—</span>'
+            : `<span class="${p.situacao === 'divergente' ? 'g-cell-error' : ''}">${_precMoeda(p.preco_impresso)}</span>`;
 
         return `
-        <tr class="${p.situacao === 'divergente' ? 'bg-red-50/50' : ''} hover:bg-gray-50 transition-colors">
-            <td class="px-4 py-3">
-                <p class="font-semibold text-gray-800 leading-tight">${_precEsc(p.descricao) || '—'}</p>
-                <p class="text-xs font-mono text-gray-400 mt-0.5">
+        <tr class="${p.situacao === 'divergente' ? 'g-row-alert' : ''}">
+            <td>
+                <div class="g-cell-strong">${_precEsc(p.descricao) || '—'}</div>
+                <div class="g-cell-num g-cell-faint">
                     ${_precEsc(p.codigo) || '—'} · Reaj: ${_precDataBR(p.ultimo_reajuste)}
-                </p>
+                </div>
             </td>
-            <td class="px-4 py-3 text-xs text-gray-500 truncate max-w-[140px]">${_precEsc(p.categoria_nome) || '—'}</td>
-            <td class="px-4 py-3 text-right font-bold text-gray-800 whitespace-nowrap">${_precMoeda(p.preco_venda)}</td>
-            <td class="px-4 py-3 text-right whitespace-nowrap">${etiqueta}</td>
-            <td class="px-4 py-3 text-center text-xs text-gray-500 whitespace-nowrap">
+            <td class="g-cell-muted truncate" style="max-width:140px">${_precEsc(p.categoria_nome) || '—'}</td>
+            <td class="g-cell-right g-cell-strong" style="white-space:nowrap">${_precMoeda(p.preco_venda)}</td>
+            <td class="g-cell-right" style="white-space:nowrap">${etiqueta}</td>
+            <td class="g-cell-center g-cell-muted" style="white-space:nowrap">
                 ${_precDataHora(p.impresso_em)}
-                ${org ? `<i class="fa-solid ${org.icone} ml-1 text-gray-300" title="${org.label}"></i>` : ''}
+                ${org ? `<i class="fa-solid ${org.icone} g-cell-faint" style="margin-left:4px" title="${org.label}"></i>` : ''}
             </td>
-            <td class="px-4 py-3 text-center">
-                <span class="${sit.classe} text-[10px] font-bold px-2 py-1 rounded-full whitespace-nowrap">
+            <td class="g-cell-center">
+                <span class="nv-badge ${sit.classe}">
                     <i class="fa-solid ${sit.icone}"></i> ${sit.label}
                 </span>
             </td>
-            <td class="px-4 py-3 text-center">
+            <td class="g-cell-center">
                 <button id="btnPrintPrec_${i}" onclick="imprimirEtiquetaPrec(${i})"
-                        class="bg-gray-700 hover:bg-gray-800 text-white w-8 h-8 rounded-lg text-xs transition-colors"
-                        title="Imprimir etiqueta de preço">
+                        class="g-print" title="Imprimir etiqueta de preço">
                     <i class="fa-solid fa-print"></i>
                 </button>
             </td>
@@ -163,11 +163,7 @@ function _precRender() {
 function precTrocarJanela(dias) {
     _precJanela = parseInt(dias) || 1;
     document.querySelectorAll('[data-prec-janela]').forEach(b => {
-        const ativo = Number(b.dataset.precJanela) === _precJanela;
-        b.classList.toggle('bg-blue-600',   ativo);
-        b.classList.toggle('text-white',    ativo);
-        b.classList.toggle('bg-gray-100',  !ativo);
-        b.classList.toggle('text-gray-600', !ativo);
+        b.classList.toggle('is-active', Number(b.dataset.precJanela) === _precJanela);
     });
     carregarPrecificacao();
 }
@@ -191,7 +187,7 @@ async function imprimirEtiquetaPrec(i) {
     if (!p || !btn) return;
 
     if (!p.codigo) {
-        btn.classList.add('bg-red-600');
+        btn.classList.add('g-print--error');
         btn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
         btn.title = 'Produto sem código de barras';
         return;
@@ -219,7 +215,7 @@ async function imprimirEtiquetaPrec(i) {
         console.error('[precificacao] Falha ao imprimir:', e.message);
         btn.innerHTML = orig;
         btn.disabled  = false;
-        btn.classList.add('bg-red-600');
+        btn.classList.add('g-print--error');
         btn.title = `Falha na impressão: ${e.message}`;
     }
 }
@@ -229,9 +225,9 @@ async function carregarImpressoesPrec() {
     const tbody = document.getElementById('tabelaImpressoes');
     if (!tbody) return;
 
-    tbody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-gray-400">
-        <i class="fa-solid fa-circle-notch fa-spin text-lg mb-2 block"></i>Carregando...
-    </td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="4"><div class="g-tableempty">
+        <i class="fa-solid fa-circle-notch fa-spin"></i>Carregando...
+    </div></td></tr>`;
 
     try {
         const r = await fetch('/api/impressoes?dias=7');
@@ -240,31 +236,31 @@ async function carregarImpressoesPrec() {
 
         const itens = d.data || [];
         if (!itens.length) {
-            tbody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-gray-400">
+            tbody.innerHTML = `<tr><td colspan="4"><div class="g-tableempty">
                 Nenhuma etiqueta impressa nos últimos 7 dias.
-            </td></tr>`;
+            </div></td></tr>`;
             return;
         }
 
         tbody.innerHTML = itens.map(im => {
             const org = _PREC_ORIGENS[im.origem] || { label: im.origem || '—', icone: 'fa-question' };
             return `
-            <tr class="hover:bg-gray-50 transition-colors">
-                <td class="px-4 py-2.5">
-                    <p class="font-semibold text-gray-800 text-xs leading-tight">${_precEsc(im.nome) || '—'}</p>
-                    <p class="text-[10px] font-mono text-gray-400">${_precEsc(im.codigo) || '—'}</p>
+            <tr>
+                <td>
+                    <div class="g-cell-strong">${_precEsc(im.nome) || '—'}</div>
+                    <div class="g-cell-num g-cell-faint">${_precEsc(im.codigo) || '—'}</div>
                 </td>
-                <td class="px-4 py-2.5 text-right font-bold text-gray-700 text-xs whitespace-nowrap">
+                <td class="g-cell-right g-cell-strong" style="white-space:nowrap">
                     ${(im.preco === null || im.preco === undefined) ? '—' : _precMoeda(im.preco)}
                 </td>
-                <td class="px-4 py-2.5 text-center text-xs text-gray-500 whitespace-nowrap">${_precDataHora(im.ts)}</td>
-                <td class="px-4 py-2.5 text-center text-xs text-gray-500 whitespace-nowrap">
-                    <i class="fa-solid ${org.icone} text-gray-300 mr-1"></i>${_precEsc(org.label)}
+                <td class="g-cell-center g-cell-muted" style="white-space:nowrap">${_precDataHora(im.ts)}</td>
+                <td class="g-cell-center g-cell-muted" style="white-space:nowrap">
+                    <i class="fa-solid ${org.icone} g-cell-faint" style="margin-right:4px"></i>${_precEsc(org.label)}
                 </td>
             </tr>`;
         }).join('');
     } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-red-400">${_precEsc(e.message)}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="4"><div class="g-tableempty g-tableempty--error">${_precEsc(e.message)}</div></td></tr>`;
     }
 }
 

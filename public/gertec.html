@@ -1,47 +1,26 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    
+
     <title>Gertec - SIC7</title>
 
-    <link rel="stylesheet" href="/assets/css/tailwind.min.css">
+    <!-- Design system Material 3 (mesma paleta/componentes do app mobile).
+         FONTE ÚNICA: assets/css/rmf.css — não editar; ajustes de página vão em gertec.css. -->
+    <link rel="stylesheet" href="/assets/css/rmf.css">
     <link href="/assets/css/all.min.css" rel="stylesheet">
 
     <link rel="stylesheet" href="/assets/css/header.css">
     <link rel="stylesheet" href="/assets/css/term-icons.css">
+    <link rel="stylesheet" href="/assets/css/gertec.css">
 
     <link rel="icon" type="image/x-icon" href="/res/icons/favicon.ico">
-    <meta name="theme-color" content="#1d4ed8">
+    <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#0D0E13" media="(prefers-color-scheme: dark)">
 
     <link rel="manifest" href="/assets/manifest.json">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="apple-touch-icon" href="/res/icons/maskable_icon_x512.png">
-
-    <style>
-        html { background-color: #1d4ed8; }
-        body { background-color: #f3f4f6; font-family: 'Inter', sans-serif; }
-        header.wco-header { background-color: #1d4ed8 !important; }
-        @media (min-width: 1024px) {
-            .sidebar-terminais {
-                position: sticky;
-                top: 1.5rem;
-                align-self: start;
-            }
-        }
-        /* Animação de abertura/fechamento dos modais */
-        .modal-overlay { opacity: 0; transition: opacity .2s ease; }
-        .modal-overlay.is-open { opacity: 1; }
-        .modal-overlay .modal-panel {
-            transform: scale(.96) translateY(8px);
-            transition: transform .2s ease, opacity .2s ease;
-            opacity: 0;
-        }
-        .modal-overlay.is-open .modal-panel { transform: scale(1) translateY(0); opacity: 1; }
-        @media (prefers-reduced-motion: reduce) {
-            .modal-overlay, .modal-overlay .modal-panel { transition: none; }
-        }
-    </style>
 
     <!-- Notificações Push (Firebase Cloud Messaging) -->
     <script src="https://www.gstatic.com/firebasejs/12.14.0/firebase-app-compat.js"></script>
@@ -60,83 +39,84 @@
         self.FIREBASE_VAPID_KEY = "BBAIdufRFOwFneK7ynebpnPBepFuBB-82CWBAHRM4NueAnt4u3t4WDGp5S8WG8FOZeq2NgGtVzoMDrDNGD-NWzU";
     </script>
 </head>
-<body class="bg-gray-50 text-gray-800 font-sans antialiased overflow-hidden flex flex-col" style="height:100vh">
+<body class="nv-body">
 
-    <header class="bg-blue-700 text-white shadow-md sticky top-0 z-40 wco-header">
-        <div class="wco-header-inner max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center w-full">
-            <div class="flex items-center gap-3">
-                <a href="/" class="hidden wco-no-drag bg-blue-800 hover:bg-blue-600 transition-colors p-2 rounded-lg shadow-inner flex items-center justify-center" title="Voltar para a Home">
-                    <i class="fa-solid fa-house text-sm text-blue-200"></i>
+    <!-- M3 Top App Bar (small) — superfície neutra, igual à do app -->
+    <header class="g-appbar wco-header" id="appbar">
+        <div class="g-appbar__inner">
+            <div class="g-appbar__lead">
+                <a href="/" class="g-iconbtn wco-no-drag hidden" title="Voltar para a Home">
+                    <i class="fa-solid fa-house"></i>
                 </a>
-                <div class="flex items-center gap-3">
-                    <img src="/res/logo.png" alt="Logo MD" class="h-8 w-auto object-contain hidden sm:block" onerror="this.style.display='none'">
-                    <h1 class="text-base sm:text-lg font-black tracking-tight uppercase">Monitor de Terminais</h1>
-                </div>
+                <img src="/res/logo.png" alt="Logo MD" class="g-appbar__logo" onerror="this.style.display='none'">
+                <h1 class="g-appbar__title">Monitor de Terminais</h1>
             </div>
-            <div class="flex items-center gap-2">
-                <button onclick="abrirModalConfig()" class="wco-no-drag bg-blue-800 hover:bg-blue-600 transition-colors px-3 py-1.5 rounded-lg text-blue-200 hover:text-white flex items-center gap-2" title="Ajustes">
-                    <i class="fa-solid fa-gear text-sm"></i>
-                    <span class="text-sm font-bold">Ajustes</span>
+            <div class="g-appbar__actions">
+                <button onclick="abrirModalConfig()" class="g-appbar__btn wco-no-drag" title="Ajustes">
+                    <i class="fa-solid fa-gear"></i>
+                    <span>Ajustes</span>
                 </button>
             </div>
         </div>
     </header>
 
-    <div class="flex-grow overflow-y-auto w-full" style="min-height:0">
-    <main class="max-w-7xl mx-auto p-4 sm:p-6 w-full grid grid-cols-1 lg:grid-cols-[420px_minmax(0,1fr)] gap-6 items-start">
-        <div class="flex flex-col gap-4 sidebar-terminais">
-            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 w-full">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="font-semibold text-gray-700 flex items-center gap-2">
-                        <i class="fa-solid fa-network-wired text-blue-500"></i> Terminais
+    <div class="g-scroll" id="scroller">
+    <main class="g-main">
+        <div class="g-sidebar">
+            <section class="g-card">
+                <div class="g-sechead">
+                    <h2 class="g-sechead__title">
+                        <i class="fa-solid fa-network-wired"></i> Terminais
                     </h2>
-                    <span id="qtdTerminaisCard" class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded-full">0</span>
+                    <span id="qtdTerminaisCard" class="g-count">0</span>
                 </div>
-                <div id="listaTerminais" class="flex flex-col gap-2">
-                    <div class="text-center text-gray-400 py-4 text-sm">Aguardando conexões...</div>
+                <div class="g-card__pad">
+                    <div id="listaTerminais" class="g-terms">
+                        <div class="g-empty">Aguardando conexões...</div>
+                    </div>
                 </div>
-            </div>
+            </section>
         </div>
 
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden w-full flex flex-col">
-            <div class="flex border-b border-gray-100 bg-gray-50 text-sm">
-                <button id="tabMainBtn_leituras" onclick="mudarAbaMain('leituras')" class="flex-1 py-3.5 font-bold border-b-2 border-blue-600 text-blue-700 transition-colors flex justify-center items-center gap-2">
+        <section class="g-card">
+            <div class="nv-tabs" role="tablist">
+                <button id="tabMainBtn_leituras" onclick="mudarAbaMain('leituras')" class="nv-tab tab-active">
                     <i class="fa-solid fa-barcode"></i> Leituras Recentes
                 </button>
-                <button id="tabMainBtn_ranking" onclick="mudarAbaMain('ranking')" class="flex-1 py-3.5 font-bold border-b-2 border-transparent text-gray-500 hover:text-blue-600 transition-colors flex justify-center items-center gap-2">
+                <button id="tabMainBtn_ranking" onclick="mudarAbaMain('ranking')" class="nv-tab">
                     <i class="fa-solid fa-chart-column"></i> Mais Buscados
                 </button>
-                <button id="tabMainBtn_leitores" onclick="mudarAbaMain('leitores')" class="flex-1 py-3.5 font-bold border-b-2 border-transparent text-gray-500 hover:text-blue-600 transition-colors flex justify-center items-center gap-2">
+                <button id="tabMainBtn_leitores" onclick="mudarAbaMain('leitores')" class="nv-tab">
                     <i class="fa-solid fa-chart-simple"></i> Leitores Mais Usados
                 </button>
-                <button id="tabMainBtn_precificacao" onclick="mudarAbaMain('precificacao')" class="flex-1 py-3.5 font-bold border-b-2 border-transparent text-gray-500 hover:text-blue-600 transition-colors flex justify-center items-center gap-2">
+                <button id="tabMainBtn_precificacao" onclick="mudarAbaMain('precificacao')" class="nv-tab">
                     <i class="fa-solid fa-tag"></i> Precificação
-                    <span id="badgePrecificacao" class="hidden bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full"></span>
+                    <span id="badgePrecificacao" class="nv-tab__badge hidden"></span>
                 </button>
             </div>
 
-            <div id="tabMain_leituras" class="flex flex-col">
-                <div class="px-4 sm:px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-white">
-                    <h3 class="font-semibold text-gray-700">Histórico de Terminais</h3>
-                    <button onclick="limparHistorico()" class="text-xs text-red-600 hover:text-red-700 transition-colors font-semibold flex items-center gap-2">
+            <div id="tabMain_leituras" class="g-tabpanel">
+                <div class="g-sechead">
+                    <h3 class="g-sechead__title">Histórico de Terminais</h3>
+                    <button onclick="limparHistorico()" class="g-textbtn g-textbtn--danger">
                         <i class="fa-solid fa-trash-can"></i> Limpar todos
                     </button>
                 </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left text-sm text-gray-600 min-w-[700px]">
-                        <thead class="bg-gray-50 text-gray-700 text-xs uppercase font-semibold">
+                <div class="g-tablewrap">
+                    <table class="g-table g-table--wide">
+                        <thead>
                             <tr>
-                                <th class="px-4 py-4 border-b border-gray-100">Hora</th>
-                                <th class="px-4 py-4 border-b border-gray-100">Terminal</th>
-                                <th class="px-4 py-4 border-b border-gray-100">Código</th>
-                                <th class="px-4 py-4 border-b border-gray-100">Produto</th>
-                                <th class="px-4 py-4 border-b border-gray-100">Preço (R$)</th>
-                                <th class="px-4 py-4 border-b border-gray-100 text-center">Ação</th>
+                                <th>Hora</th>
+                                <th>Terminal</th>
+                                <th>Código</th>
+                                <th>Produto</th>
+                                <th>Preço (R$)</th>
+                                <th class="g-cell-center">Ação</th>
                             </tr>
                         </thead>
-                        <tbody id="tabelaLeituras" class="divide-y divide-gray-100">
+                        <tbody id="tabelaLeituras">
                             <tr id="linhaVazia">
-                                <td colspan="6" class="text-center py-12 text-gray-400">Nenhuma leitura registrada.</td>
+                                <td colspan="6"><div class="g-tableempty">Nenhuma leitura registrada.</div></td>
                             </tr>
                         </tbody>
                     </table>
@@ -144,56 +124,56 @@
                 <div id="pagLeiturasBar"></div>
             </div>
 
-            <div id="tabMain_ranking" class="hidden flex-col">
-                <div class="px-4 sm:px-6 py-4 border-b border-gray-100 flex items-center bg-white">
-                    <h3 class="font-semibold text-gray-700">Ranking Geral de Produtos</h3>
+            <div id="tabMain_ranking" class="g-tabpanel hidden">
+                <div class="g-sechead">
+                    <h3 class="g-sechead__title">Ranking Geral de Produtos</h3>
                 </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left text-sm text-gray-600 min-w-[700px]">
-                        <thead class="bg-gray-50 text-gray-700 text-xs uppercase font-semibold">
+                <div class="g-tablewrap">
+                    <table class="g-table g-table--wide">
+                        <thead>
                             <tr>
-                                <th class="px-4 py-4 border-b border-gray-100 text-center w-12">Nº</th>
-                                <th class="px-4 py-4 border-b border-gray-100">Código</th>
-                                <th class="px-4 py-4 border-b border-gray-100">Produto</th>
-                                <th class="px-4 py-4 border-b border-gray-100">Preço (R$)</th>
-                                <th class="px-4 py-4 border-b border-gray-100 text-center">Acessos</th>
-                                <th class="px-4 py-4 border-b border-gray-100 text-center">Ação</th>
+                                <th class="g-cell-center">Nº</th>
+                                <th>Código</th>
+                                <th>Produto</th>
+                                <th>Preço (R$)</th>
+                                <th class="g-cell-center">Acessos</th>
+                                <th class="g-cell-center">Ação</th>
                             </tr>
                         </thead>
-                        <tbody id="tabelaRanking" class="divide-y divide-gray-100">
-                            <tr><td colspan="6" class="text-center py-12 text-gray-400">Aguardando dados...</td></tr>
+                        <tbody id="tabelaRanking">
+                            <tr><td colspan="6"><div class="g-tableempty">Aguardando dados...</div></td></tr>
                         </tbody>
                     </table>
                 </div>
                 <div id="pagRankingBar"></div>
             </div>
 
-            <div id="tabMain_leitores" class="hidden flex-col">
-                <div class="px-4 sm:px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white">
-                    <h3 class="font-semibold text-gray-700">Leitores Mais Usados</h3>
-                    <span class="text-xs text-gray-400 hidden sm:inline">Clique em um leitor para filtrar os produtos</span>
+            <div id="tabMain_leitores" class="g-tabpanel hidden">
+                <div class="g-sechead">
+                    <h3 class="g-sechead__title">Leitores Mais Usados</h3>
+                    <span class="g-sechead__sub">Clique em um leitor para filtrar os produtos</span>
                 </div>
-                <div id="graficoLeitores" class="p-4 sm:p-6 flex flex-col gap-3">
-                    <div class="text-center py-12 text-gray-400">Aguardando dados...</div>
+                <div id="graficoLeitores" class="g-chart">
+                    <div class="g-empty">Aguardando dados...</div>
                 </div>
 
-                <div id="leitorRankingWrap" class="hidden flex-col border-t border-gray-100">
-                    <div class="px-4 sm:px-6 py-4 flex items-center bg-gray-50">
-                        <h3 class="font-semibold text-gray-700 truncate">Mais buscados por <span id="leitorFiltroNome" class="text-blue-700"></span></h3>
+                <div id="leitorRankingWrap" class="g-tabpanel hidden">
+                    <div class="g-sechead g-sechead--sub">
+                        <h3 class="g-sechead__title truncate">Mais buscados por <span id="leitorFiltroNome"></span></h3>
                     </div>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left text-sm text-gray-600 min-w-[700px]">
-                            <thead class="bg-gray-50 text-gray-700 text-xs uppercase font-semibold">
+                    <div class="g-tablewrap">
+                        <table class="g-table g-table--wide">
+                            <thead>
                                 <tr>
-                                    <th class="px-4 py-4 border-b border-gray-100 text-center w-12">Nº</th>
-                                    <th class="px-4 py-4 border-b border-gray-100">Código</th>
-                                    <th class="px-4 py-4 border-b border-gray-100">Produto</th>
-                                    <th class="px-4 py-4 border-b border-gray-100">Preço (R$)</th>
-                                    <th class="px-4 py-4 border-b border-gray-100 text-center">Acessos</th>
-                                    <th class="px-4 py-4 border-b border-gray-100 text-center">Ação</th>
+                                    <th class="g-cell-center">Nº</th>
+                                    <th>Código</th>
+                                    <th>Produto</th>
+                                    <th>Preço (R$)</th>
+                                    <th class="g-cell-center">Acessos</th>
+                                    <th class="g-cell-center">Ação</th>
                                 </tr>
                             </thead>
-                            <tbody id="tabelaLeitorRanking" class="divide-y divide-gray-100"></tbody>
+                            <tbody id="tabelaLeitorRanking"></tbody>
                         </table>
                     </div>
                     <div id="pagLeitorBar"></div>
@@ -205,149 +185,145 @@
                  tabest1.ultreaj) cruzados com a última etiqueta impressa.
                  O histórico de impressões é unificado: estoque, app e
                  terminais, com retenção de 7 dias. ──────────────────────── -->
-            <div id="tabMain_precificacao" class="hidden flex-col">
-                <div class="px-4 sm:px-6 py-4 border-b border-gray-100 flex flex-wrap justify-between items-center gap-3 bg-white">
-                    <h3 class="font-semibold text-gray-700">
+            <div id="tabMain_precificacao" class="g-tabpanel hidden">
+                <div class="g-sechead">
+                    <h3 class="g-sechead__title">
                         Preços Alterados
-                        <span class="text-xs font-normal text-gray-500 ml-1">
+                        <span class="g-sechead__sub">
                             <span id="precResumoFiltrados">0</span> de <span id="precResumoTotal">0</span> ·
-                            <span id="precResumoDivergentes" class="text-red-600 font-bold">0</span> divergente(s)
+                            <span id="precResumoDivergentes" class="g-strong-danger">0</span> divergente(s)
                         </span>
                     </h3>
-                    <div class="flex items-center gap-3 flex-wrap">
-                        <div class="flex items-center gap-1">
-                            <button data-prec-janela="1" onclick="precTrocarJanela(1)"
-                                    class="bg-blue-600 text-white px-3 py-1 rounded-lg text-xs font-bold transition">Hoje</button>
-                            <button data-prec-janela="2" onclick="precTrocarJanela(2)"
-                                    class="bg-gray-100 text-gray-600 px-3 py-1 rounded-lg text-xs font-bold transition">Ontem</button>
-                            <button data-prec-janela="7" onclick="precTrocarJanela(7)"
-                                    class="bg-gray-100 text-gray-600 px-3 py-1 rounded-lg text-xs font-bold transition">7 dias</button>
+                    <div class="g-sechead__tools g-filterbar">
+                        <div class="rmf-seg">
+                            <button data-prec-janela="1" onclick="precTrocarJanela(1)" class="rmf-seg__btn is-active">Hoje</button>
+                            <button data-prec-janela="2" onclick="precTrocarJanela(2)" class="rmf-seg__btn">Ontem</button>
+                            <button data-prec-janela="7" onclick="precTrocarJanela(7)" class="rmf-seg__btn">7 dias</button>
                         </div>
-                        <label class="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" id="chkPrecDivergentes" class="w-3.5 h-3.5 accent-red-500"
-                                   onchange="precToggleDivergentes()">
-                            <span class="text-xs font-semibold text-red-700 whitespace-nowrap">Só divergentes</span>
+                        <label class="g-check g-check--danger">
+                            <input type="checkbox" id="chkPrecDivergentes" onchange="precToggleDivergentes()">
+                            <span>Só divergentes</span>
                         </label>
-                        <input type="text" id="precBusca" oninput="filtrarPrecificacao()" placeholder="Filtrar por nome ou código..."
-                               class="border border-gray-300 rounded-lg px-3 py-1.5 text-xs w-52 focus:outline-none focus:ring-2 focus:ring-blue-300">
-                        <button onclick="carregarPrecificacao()"
-                                class="text-xs text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-2" title="Recarregar">
+                        <div class="nv-control nv-control--search g-search">
+                            <i class="fa-solid fa-magnifying-glass nv-control__search-ic"></i>
+                            <input type="text" id="precBusca" oninput="filtrarPrecificacao()" placeholder="Filtrar por nome ou código...">
+                        </div>
+                        <button onclick="carregarPrecificacao()" class="g-textbtn" title="Recarregar">
                             <i class="fa-solid fa-arrows-rotate"></i> Atualizar
                         </button>
                     </div>
                 </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left text-sm text-gray-600 min-w-[860px]">
-                        <thead class="bg-gray-50 text-gray-700 text-xs uppercase font-semibold">
+                <div class="g-tablewrap">
+                    <table class="g-table g-table--xwide">
+                        <thead>
                             <tr>
-                                <th class="px-4 py-4 border-b border-gray-100">Produto</th>
-                                <th class="px-4 py-4 border-b border-gray-100">Categoria</th>
-                                <th class="px-4 py-4 border-b border-gray-100 text-right">Preço Atual</th>
-                                <th class="px-4 py-4 border-b border-gray-100 text-right">Última Etiqueta</th>
-                                <th class="px-4 py-4 border-b border-gray-100 text-center">Impresso em</th>
-                                <th class="px-4 py-4 border-b border-gray-100 text-center">Situação</th>
-                                <th class="px-4 py-4 border-b border-gray-100 text-center">Ação</th>
+                                <th>Produto</th>
+                                <th>Categoria</th>
+                                <th class="g-cell-right">Preço Atual</th>
+                                <th class="g-cell-right">Última Etiqueta</th>
+                                <th class="g-cell-center">Impresso em</th>
+                                <th class="g-cell-center">Situação</th>
+                                <th class="g-cell-center">Ação</th>
                             </tr>
                         </thead>
-                        <tbody id="tabelaPrecificacao" class="divide-y divide-gray-100">
-                            <tr><td colspan="7" class="text-center py-12 text-gray-400">Aguardando dados...</td></tr>
+                        <tbody id="tabelaPrecificacao">
+                            <tr><td colspan="7"><div class="g-tableempty">Aguardando dados...</div></td></tr>
                         </tbody>
                     </table>
                 </div>
 
-                <div class="px-4 sm:px-6 py-4 border-t border-gray-100 flex justify-between items-center bg-gray-50 cursor-pointer select-none"
-                     onclick="togglePainelImpressoes()">
-                    <h3 class="font-semibold text-gray-700">
+                <div class="g-sechead g-sechead--sub g-sechead--click" onclick="togglePainelImpressoes()">
+                    <h3 class="g-sechead__title">
                         Etiquetas Impressas
-                        <span class="text-xs font-normal text-gray-500 ml-1">últimos 7 dias · estoque, app e terminais</span>
+                        <span class="g-sechead__sub">últimos 7 dias · estoque, app e terminais</span>
                     </h3>
-                    <i id="chevronImpressoes" class="fa-solid fa-chevron-down text-gray-400 transition-transform duration-200"
-                       style="transform: rotate(-90deg)"></i>
+                    <i id="chevronImpressoes" class="fa-solid fa-chevron-down g-chevron" style="transform: rotate(-90deg)"></i>
                 </div>
-                <div id="painelImpressoes" class="hidden overflow-x-auto border-t border-gray-100">
-                    <table class="w-full text-left text-sm text-gray-600 min-w-[700px]">
-                        <thead class="bg-gray-50 text-gray-700 text-xs uppercase font-semibold">
+                <div id="painelImpressoes" class="g-tablewrap hidden">
+                    <table class="g-table g-table--wide">
+                        <thead>
                             <tr>
-                                <th class="px-4 py-4 border-b border-gray-100">Produto</th>
-                                <th class="px-4 py-4 border-b border-gray-100 text-right">Preço Impresso</th>
-                                <th class="px-4 py-4 border-b border-gray-100 text-center">Quando</th>
-                                <th class="px-4 py-4 border-b border-gray-100 text-center">Origem</th>
+                                <th>Produto</th>
+                                <th class="g-cell-right">Preço Impresso</th>
+                                <th class="g-cell-center">Quando</th>
+                                <th class="g-cell-center">Origem</th>
                             </tr>
                         </thead>
-                        <tbody id="tabelaImpressoes" class="divide-y divide-gray-100"></tbody>
+                        <tbody id="tabelaImpressoes"></tbody>
                     </table>
                 </div>
             </div>
-        </div>
+        </section>
     </main>
     </div>
 
     <!-- Modal Mídias -->
-    <div id="modalMidia" class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style="background-color: rgba(17, 24, 39, 0.5);">
-        <div class="modal-panel bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
-            <div class="bg-blue-700 text-white p-4 shrink-0 shadow-md z-20">
-                <div class="flex justify-between items-center gap-3">
-                    <div class="flex items-center gap-3 min-w-0">
-                        <div class="min-w-0">
-                            <div class="flex items-center gap-2 flex-wrap">
-                                <h2 class="font-black text-xl leading-tight flex items-center gap-2"><i class="fa-solid fa-images"></i> Gerenciador de Mídias</h2>
-                                <span id="ipModalMidia" class="inline-flex items-center bg-blue-900 text-blue-100 font-mono text-xs leading-none px-2 py-1 rounded"></span>
-                                <span id="tipoModalMidia" class="inline-flex items-center bg-emerald-500 text-white font-mono text-xs leading-none px-2 py-1 rounded"></span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-2 shrink-0">
-                        <button onclick="fecharModalMidia()" class="text-blue-300 hover:text-white transition p-2">
-                            <i class="fa-solid fa-xmark text-xl"></i>
-                        </button>
-                    </div>
+    <div id="modalMidia" class="nv-modal hidden">
+        <div class="nv-modal__panel nv-modal__panel--xl modal-panel">
+            <div class="nv-modal__head">
+                <div class="nv-modal__title">
+                    <i class="fa-solid fa-images"></i>
+                    <span>Gerenciador de Mídias</span>
+                    <span class="g-modalchips">
+                        <span id="ipModalMidia" class="g-chip-ip"></span>
+                        <span id="tipoModalMidia" class="g-chip-tipo"></span>
+                    </span>
+                </div>
+                <div class="nv-modal__actions">
+                    <button onclick="fecharModalMidia()" class="ibtn" title="Fechar">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
                 </div>
             </div>
-            <div class="flex border-b border-gray-200 bg-gray-50 text-sm z-10 shrink-0">
-                <button id="tabBtn_arquivos" onclick="mudarAba('arquivos')" class="flex-1 py-3.5 font-bold border-b-2 border-blue-600 text-blue-700 transition-colors flex justify-center items-center gap-2">
+            <div class="nv-tabs" role="tablist">
+                <button id="tabBtn_arquivos" onclick="mudarAba('arquivos')" class="nv-tab tab-active">
                     <i class="fa-regular fa-folder-open"></i> Arquivos em Memória
                 </button>
-                <button id="tabBtn_playlist" onclick="mudarAba('playlist')" class="flex-1 py-3.5 font-bold border-b-2 border-transparent text-gray-500 hover:text-blue-600 transition-colors flex justify-center items-center gap-2">
+                <button id="tabBtn_playlist" onclick="mudarAba('playlist')" class="nv-tab">
                     <i class="fa-solid fa-list-ul"></i> Ordem de Exibição
                 </button>
             </div>
-            <div class="p-5 overflow-y-auto bg-white flex-1 relative">
-                <div id="statusMidia" class="absolute top-0 left-0 right-0 text-sm text-center font-bold py-2 bg-blue-50 text-blue-700 z-10 hidden shadow border-b border-blue-100"></div>
-                <div id="tab_arquivos" class="flex flex-col gap-4">
-                    <div id="infoResolucao" class="text-xs text-gray-500 text-center font-medium -mb-2"></div>
-                    <div class="flex gap-3">
-                        <button onclick="buscarListaMidias()" class="flex-1 bg-blue-50 text-blue-700 py-2.5 rounded-lg font-semibold hover:bg-blue-100 transition-colors border border-blue-100 shadow-sm flex justify-center items-center gap-2">
+            <div class="nv-modal__body g-relative">
+                <div id="statusMidia" class="g-status hidden"></div>
+                <div id="tab_arquivos" class="nv-modal__section">
+                    <div id="infoResolucao" class="g-media-info"></div>
+                    <div class="g-media-actions">
+                        <button onclick="buscarListaMidias()" class="nv-btn nv-btn--tonal">
                             <i class="fa-solid fa-hard-drive"></i> Ler Memória
                         </button>
-                        <label id="labelUploadMidia" class="flex-1 bg-emerald-600 text-white py-2.5 rounded-lg font-semibold text-center cursor-pointer hover:bg-emerald-700 transition-colors shadow-sm flex justify-center items-center gap-2">
+                        <label id="labelUploadMidia" class="nv-btn nv-btn--filled">
                             <i class="fa-solid fa-upload"></i> Enviar Arquivo
                             <input type="file" class="hidden" onchange="uploadArquivo(this)">
                         </label>
                     </div>
-                    <div id="containerListaArquivos" class="flex flex-col gap-2 min-h-[120px] border border-gray-100 rounded-lg p-2 bg-gray-50/50"></div>
-                    <div id="previewMidiaContainer" class="hidden mt-2 border border-gray-200 rounded-lg p-3 bg-gray-50 flex flex-col items-center justify-center min-h-[150px] relative">
-                        <p id="nomePreview" class="text-xs font-mono text-gray-500 mb-2 bg-white px-2 py-1 rounded border border-gray-200"></p>
-                        <div id="mediaRender" class="flex justify-center w-full"></div>
+                    <div id="containerListaArquivos" class="g-filelist"></div>
+                    <div id="previewMidiaContainer" class="g-preview hidden">
+                        <p id="nomePreview" class="g-preview__name"></p>
+                        <div id="mediaRender" class="g-preview__media"></div>
                     </div>
                 </div>
-                <div id="tab_playlist" class="hidden flex-col gap-4">
-                    <div class="bg-blue-50 border border-blue-100 p-3 rounded-lg text-sm text-blue-800 flex justify-between items-center shadow-sm">
-                        <span class="font-medium"><i class="fa-solid fa-circle-info mr-2 opacity-75"></i>Baixe a playlist atual para editá-la.</span>
-                        <button onclick="buscarPlaylist()" class="bg-blue-600 text-white px-4 py-2 rounded-md font-bold shadow hover:bg-blue-700 transition-colors flex items-center">
-                            <i class="fa-solid fa-download mr-2"></i> Ler Terminal
-                        </button>
+                <div id="tab_playlist" class="nv-modal__section hidden">
+                    <div class="m3-callout m3-callout-surface" style="margin-top:0">
+                        <i class="fa-solid fa-circle-info"></i>
+                        <p>Baixe a playlist atual para editá-la.</p>
                     </div>
-                    <div id="containerPlaylist" class="divide-y divide-gray-100 max-h-[35vh] overflow-y-auto bg-white border rounded-lg shadow-sm"></div>
-                    <div class="flex gap-2 items-center bg-gray-50 p-2 rounded-lg border border-gray-200">
-                        <select id="selectNovaMidia" class="flex-1 border border-gray-300 rounded-md px-3 py-2.5 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
-                            <option value="">Carregue a aba Arquivos primeiro...</option>
-                        </select>
-                        <button onclick="adicionarNaPlaylist()" class="bg-blue-600 text-white px-5 py-2.5 rounded-md text-sm font-bold shadow hover:bg-blue-700 transition-colors flex items-center gap-2">
+                    <button onclick="buscarPlaylist()" class="nv-btn nv-btn--tonal nv-btn--block">
+                        <i class="fa-solid fa-download"></i> Ler Terminal
+                    </button>
+                    <div id="containerPlaylist" class="g-playlist"></div>
+                    <div class="g-pl-add">
+                        <div class="nv-control">
+                            <select id="selectNovaMidia">
+                                <option value="">Carregue a aba Arquivos primeiro...</option>
+                            </select>
+                            <i class="fa-solid fa-chevron-down nv-control__chevron"></i>
+                        </div>
+                        <button onclick="adicionarNaPlaylist()" class="nv-btn nv-btn--tonal nv-btn--sm">
                             <i class="fa-solid fa-plus"></i> Inserir
                         </button>
                     </div>
-                    <button onclick="salvarPlaylist()" class="w-full bg-emerald-600 text-white py-3.5 rounded-lg font-bold shadow-md hover:bg-emerald-700 transition-colors mt-2 flex items-center justify-center gap-2 text-base">
-                        <i class="fa-solid fa-floppy-disk"></i> GRAVAR PLAYLIST NO TERMINAL
+                    <button onclick="salvarPlaylist()" class="nv-btn nv-btn--filled nv-btn--block">
+                        <i class="fa-solid fa-floppy-disk"></i> Gravar playlist no terminal
                     </button>
                 </div>
             </div>
@@ -355,98 +331,105 @@
     </div>
 
     <!-- Modal Debug -->
-    <div id="modalDebug" class="modal-overlay hidden fixed inset-0 z-[60] flex items-center justify-center p-4 backdrop-blur-sm" style="background-color: rgba(17, 24, 39, 0.6);">
-        <div class="modal-panel bg-gray-950 border border-gray-700 rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col">
-            <div class="bg-gray-900 text-white p-4 shrink-0 border-b border-gray-700">
-                <div class="flex justify-between items-center gap-3">
-                    <div class="flex items-center gap-3 min-w-0">
-                        <div class="min-w-0">
-                            <div class="flex items-center gap-2 flex-wrap">
-                                <h2 class="font-black text-xl leading-tight flex items-center gap-2 font-mono"><i class="fa-solid fa-terminal text-emerald-400"></i> Terminal de Debug</h2>
-                                <span id="ipModalDebug" class="inline-flex items-center bg-gray-800 text-gray-300 font-mono text-xs leading-none px-2 py-1 rounded"></span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-2 shrink-0">
-                        <button onclick="fecharModalDebug()" class="text-gray-400 hover:text-white transition p-2">
-                            <i class="fa-solid fa-xmark text-xl"></i>
-                        </button>
-                    </div>
+    <div id="modalDebug" class="nv-modal nv-modal--top hidden">
+        <div class="nv-modal__panel nv-modal__panel--lg modal-panel">
+            <div class="nv-modal__head">
+                <div class="nv-modal__title">
+                    <i class="fa-solid fa-terminal"></i>
+                    <span>Terminal de Debug</span>
+                    <span class="g-modalchips"><span id="ipModalDebug" class="g-chip-ip"></span></span>
+                </div>
+                <div class="nv-modal__actions">
+                    <button onclick="fecharModalDebug()" class="ibtn" title="Fechar">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
                 </div>
             </div>
-            <div id="debugLogsContainer" class="p-4 h-80 overflow-y-auto font-mono text-xs flex flex-col gap-1.5 bg-gray-950 text-gray-300">
-                <div id="placeholderDebug" class="text-gray-600 italic text-center mt-4">Aguardando comandos deste terminal...</div>
+            <div id="debugLogsContainer" class="g-console">
+                <div id="placeholderDebug" class="g-console__empty">Aguardando comandos deste terminal...</div>
             </div>
         </div>
     </div>
 
     <!-- Modal Config -->
-    <div id="modalConfig" class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style="background-color: rgba(17, 24, 39, 0.5);">
-        <div class="modal-panel bg-white rounded-xl shadow-2xl w-full max-w-sm max-h-[90vh] overflow-hidden flex flex-col">
-            <div class="bg-blue-700 text-white p-4 shrink-0">
-                <div class="flex justify-between items-center gap-3">
-                    <div class="flex items-center gap-3 min-w-0">
-                        <div class="min-w-0">
-                            <h2 class="font-black text-xl leading-tight flex items-center gap-2"><i class="fa-solid fa-gear"></i> Ajustes</h2>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-2 shrink-0">
-                        <button onclick="fecharModalConfig()" class="text-blue-300 hover:text-white transition p-2">
-                            <i class="fa-solid fa-xmark text-xl"></i>
-                        </button>
-                    </div>
+    <div id="modalConfig" class="nv-modal hidden">
+        <div class="nv-modal__panel modal-panel">
+            <div class="nv-modal__head">
+                <div class="nv-modal__title">
+                    <i class="fa-solid fa-gear"></i>
+                    <span>Ajustes</span>
+                </div>
+                <div class="nv-modal__actions">
+                    <button onclick="fecharModalConfig()" class="ibtn" title="Fechar">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
                 </div>
             </div>
-            <div class="p-5 flex flex-col gap-4 overflow-y-auto">
-                <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800 flex items-start gap-2">
-                    <i class="fa-solid fa-triangle-exclamation mt-0.5 shrink-0"></i>
-                    <span>Alterar as portas requer reinicialização do servidor. A impressora aplica imediatamente.</span>
+            <div class="nv-modal__body">
+                <div class="m3-callout m3-callout-warning" style="margin-top:0">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <p>Alterar as portas requer reinicialização do servidor. A impressora aplica imediatamente.</p>
                 </div>
-                <div class="flex flex-col gap-1">
-                    <label class="text-xs font-bold text-gray-600 uppercase">Impressora de Preços (URL)</label>
-                    <input type="text" id="inputImpressoraUrl" placeholder="http://seu_ip:porta/api/v1/imprimir/preco?barcode=" class="border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono">
-                    <span class="text-xs text-gray-400">O código de barras é anexado ao final da URL.</span>
+
+                <div class="g-field">
+                    <label class="g-field__label" for="inputImpressoraUrl">Impressora de Preços (URL)</label>
+                    <div class="nv-control">
+                        <input type="text" id="inputImpressoraUrl" placeholder="http://seu_ip:porta/api/v1/imprimir/preco?barcode=">
+                    </div>
+                    <span class="g-field__hint">O código de barras é anexado ao final da URL.</span>
                 </div>
-                <div class="flex flex-col gap-1">
-                    <label class="text-xs font-bold text-gray-600 uppercase">Porta BP G2 (TCP)</label>
-                    <input type="number" id="inputPortaBP" class="border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono">
-                    <span class="text-xs text-gray-400">Padrão: 6500</span>
+
+                <div class="g-field">
+                    <label class="g-field__label" for="inputPortaBP">Porta BP G2 (TCP)</label>
+                    <div class="nv-control">
+                        <input type="number" id="inputPortaBP">
+                    </div>
+                    <span class="g-field__hint">Padrão: 6500</span>
                 </div>
-                <div class="flex flex-col gap-1">
-                    <label class="text-xs font-bold text-gray-600 uppercase">Porta TC-506 (TCP)</label>
-                    <input type="number" id="inputPortaTC" class="border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono">
-                    <span class="text-xs text-gray-400">Padrão: 16510</span>
+
+                <div class="g-field">
+                    <label class="g-field__label" for="inputPortaTC">Porta TC-506 (TCP)</label>
+                    <div class="nv-control">
+                        <input type="number" id="inputPortaTC">
+                    </div>
+                    <span class="g-field__hint">Padrão: 16510</span>
                 </div>
-                <div class="flex flex-col gap-1">
-                    <label class="text-xs font-bold text-gray-600 uppercase">Alertar após X buscas</label>
-                    <input type="number" min="1" id="inputBuscasLimite" class="border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono">
-                    <span class="text-xs text-gray-400">Notifica quando um produto é consultado a cada X vezes. Padrão: 10</span>
+
+                <div class="g-field">
+                    <label class="g-field__label" for="inputBuscasLimite">Alertar após X buscas</label>
+                    <div class="nv-control">
+                        <input type="number" min="1" id="inputBuscasLimite">
+                    </div>
+                    <span class="g-field__hint">Notifica quando um produto é consultado a cada X vezes. Padrão: 10</span>
                 </div>
-                <div class="border-t border-gray-200 pt-4 flex flex-col gap-2">
-                    <label class="text-xs font-bold text-gray-600 uppercase">Notificações Push</label>
-                    <button onclick="ativarNotificacoes()" id="btnAtivarPush" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-bold transition-colors flex items-center justify-center gap-2">
+
+                <div class="g-group">
+                    <span class="g-field__label">Notificações Push</span>
+                    <button onclick="ativarNotificacoes()" id="btnAtivarPush" class="nv-btn nv-btn--filled nv-btn--block">
                         <i class="fa-solid fa-bell"></i> Ativar Notificações
                     </button>
-                    <button onclick="marcarComoLido()" id="btnMarcarLido" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2">
+                    <button onclick="marcarComoLido()" id="btnMarcarLido" class="nv-btn nv-btn--tonal nv-btn--block nv-btn--sm">
                         <i class="fa-solid fa-check-double"></i> Marcar como lido
                     </button>
-                    <button onclick="testarNotificacao()" id="btnTestePush" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2">
+                    <button onclick="testarNotificacao()" id="btnTestePush" class="nv-btn nv-btn--tonal nv-btn--block nv-btn--sm">
                         <i class="fa-solid fa-paper-plane"></i> Enviar teste
                     </button>
-                    <div id="msgPush" class="hidden text-xs font-semibold text-center py-1.5 rounded-lg"></div>
-                    <span class="text-xs text-gray-400">Avisa quando um leitor cai ou um produto não é encontrado.</span>
+                    <div id="msgPush" class="g-msg hidden"></div>
+                    <span class="g-field__hint">Avisa quando um leitor cai ou um produto não é encontrado.</span>
                 </div>
 
-                <div class="border-t border-gray-200 pt-4 flex flex-col gap-2">
-                    <label class="text-xs font-bold text-gray-600 uppercase">Aplicativo no Celular</label>
-                    <button onclick="abrirModalCelular()" id="btnConectarCelular" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-bold transition-colors flex items-center justify-center gap-2">
+                <div class="g-group">
+                    <span class="g-field__label">Aplicativo no Celular</span>
+                    <button onclick="abrirModalCelular()" id="btnConectarCelular" class="nv-btn nv-btn--filled nv-btn--block">
                         <i class="fa-solid fa-mobile-screen-button"></i> Conectar Celular
                     </button>
-                    <span class="text-xs text-gray-400">Gera um QR Code para o app SIC Printer ler preços por aqui, sem dar a senha do banco ao aparelho.</span>
+                    <span class="g-field__hint">Gera um QR Code para o app SIC Printer ler preços por aqui, sem dar a senha do banco ao aparelho.</span>
                 </div>
 
-                <div id="msgConfig" class="hidden text-xs font-semibold text-center py-2 rounded-lg"></div>
-                <button onclick="salvarConfig()" id="btnSalvarConfig" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-bold transition-colors flex items-center justify-center gap-2">
+                <div id="msgConfig" class="g-msg hidden"></div>
+            </div>
+            <div class="nv-modal__actions-row nv-modal__actions-row--foot">
+                <button onclick="salvarConfig()" id="btnSalvarConfig" class="nv-btn nv-btn--filled nv-btn--block">
                     <i class="fa-solid fa-floppy-disk"></i> Salvar Ajustes
                 </button>
             </div>
@@ -454,42 +437,43 @@
     </div>
 
     <!-- Modal Conectar Celular (SIC Printer HTTP) -->
-    <div id="modalCelular" class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style="background-color: rgba(17, 24, 39, 0.5);">
-        <div class="modal-panel bg-white rounded-xl shadow-2xl w-full max-w-sm max-h-[90vh] overflow-hidden flex flex-col">
-            <div class="bg-blue-700 text-white p-4 shrink-0">
-                <div class="flex justify-between items-center gap-3">
-                    <h2 class="font-black text-xl leading-tight flex items-center gap-2"><i class="fa-solid fa-mobile-screen-button"></i> Conectar Celular</h2>
-                    <button onclick="fecharModalEl('modalCelular')" class="text-blue-300 hover:text-white transition p-2">
-                        <i class="fa-solid fa-xmark text-xl"></i>
+    <div id="modalCelular" class="nv-modal nv-modal--top hidden">
+        <div class="nv-modal__panel modal-panel">
+            <div class="nv-modal__head">
+                <div class="nv-modal__title">
+                    <i class="fa-solid fa-mobile-screen-button"></i>
+                    <span>Conectar Celular</span>
+                </div>
+                <div class="nv-modal__actions">
+                    <button onclick="fecharModalEl('modalCelular')" class="ibtn" title="Fechar">
+                        <i class="fa-solid fa-xmark"></i>
                     </button>
                 </div>
             </div>
-            <div class="p-5 flex flex-col gap-4 overflow-y-auto">
-                <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800 flex items-start gap-2">
-                    <i class="fa-solid fa-shield-halved mt-0.5 shrink-0"></i>
-                    <span>O app lê os preços por esta máquina. A senha do banco <b>nunca</b> vai para o celular — só um token revogável.</span>
+            <div class="nv-modal__body">
+                <div class="m3-callout m3-callout-surface" style="margin-top:0">
+                    <i class="fa-solid fa-shield-halved"></i>
+                    <p>O app lê os preços por esta máquina. A senha do banco <strong>nunca</strong> vai para o celular — só um token revogável.</p>
                 </div>
 
-                <label class="flex items-center gap-2 cursor-pointer select-none">
-                    <input type="checkbox" id="chkSicHabilitado" class="w-4 h-4 accent-blue-600">
-                    <span class="text-sm font-semibold text-gray-700">Habilitar acesso de celulares (API HTTP)</span>
+                <label class="g-check">
+                    <input type="checkbox" id="chkSicHabilitado">
+                    <span>Habilitar acesso de celulares (API HTTP)</span>
                 </label>
 
-                <div id="sicArea" class="hidden flex flex-col items-center gap-3 border-t border-gray-200 pt-4">
-                    <div class="bg-white border border-gray-200 rounded-lg p-3">
-                        <img id="sicQrImg" alt="QR Code" class="w-56 h-56" />
-                    </div>
-                    <p class="text-xs text-gray-500 text-center">Abra o app SIC Printer → <b>Conectar via QR</b> e aponte para o código acima.</p>
-                    <div class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-600 break-all">
-                        <div><span class="text-gray-400">Empresa:</span> <span id="sicEmpresa" class="font-semibold">—</span></div>
-                        <div class="font-mono mt-1"><span class="text-gray-400">Endereço:</span> <span id="sicBaseUrl">—</span></div>
-                    </div>
-                    <button onclick="rotacionarSicToken()" id="btnSicRotacionar" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2">
+                <div id="sicArea" class="g-qr-wrap hidden">
+                    <div class="g-qr"><img id="sicQrImg" alt="QR Code"></div>
+                    <p class="g-field__hint" style="text-align:center">Abra o app SIC Printer → <strong>Conectar via QR</strong> e aponte para o código acima.</p>
+                    <dl class="g-kv">
+                        <div class="g-kv__row"><dt>Empresa:</dt> <dd id="sicEmpresa">—</dd></div>
+                        <div class="g-kv__row g-kv__row--mono"><dt>Endereço:</dt> <dd id="sicBaseUrl">—</dd></div>
+                    </dl>
+                    <button onclick="rotacionarSicToken()" id="btnSicRotacionar" class="nv-btn nv-btn--outline nv-btn--block nv-btn--sm">
                         <i class="fa-solid fa-rotate"></i> Gerar novo token (revoga o anterior)
                     </button>
                 </div>
 
-                <div id="msgSic" class="hidden text-xs font-semibold text-center py-2 rounded-lg"></div>
+                <div id="msgSic" class="g-msg hidden"></div>
             </div>
         </div>
     </div>
@@ -513,12 +497,20 @@
         let impressos = new Set(); // IDs de leituras que já tiveram o preço impresso
         let apelidos = {};
 
+        // App bar ganha o degrau "scrolled-under" (M3) quando o conteúdo passa por baixo
+        (function () {
+            const sc = document.getElementById('scroller');
+            const bar = document.getElementById('appbar');
+            if (!sc || !bar) return;
+            sc.addEventListener('scroll', () => bar.classList.toggle('is-scrolled', sc.scrollTop > 0), { passive: true });
+        })();
+
         function renderizarTerminais() {
             const terminais = [...listaBP.map(t => ({...t, tipo: 'BP'})), ...listaTC.map(t => ({...t, tipo: 'TC'}))];
             document.getElementById('qtdTerminaisCard').innerText = terminais.length;
             const container = document.getElementById('listaTerminais');
             if (terminais.length === 0) {
-                container.innerHTML = '<div class="text-center text-gray-400 py-4 text-sm">Aguardando conexões...</div>';
+                container.innerHTML = '<div class="g-empty">Aguardando conexões...</div>';
                 return;
             }
             container.innerHTML = terminais.map(t => {
@@ -527,25 +519,27 @@
                 const apelido = serial ? apelidos[serial] : '';
                 const nomeExibido = apelido || t.modelo;
                 const spanAttrs = serial
-                    ? `class="apelido-nome cursor-pointer hover:text-blue-600 border-b border-dashed border-transparent hover:border-blue-400 transition-colors" title="Clique para apelidar (MAC: ${serial})" data-modelo="${t.modelo}" onclick="editarApelido(this, '${serial}')"`
-                    : `class="text-gray-700" title="Aguardando identificação do hardware (MAC)..."`;
+                    ? `class="apelido-nome" title="Clique para apelidar (MAC: ${serial})" data-modelo="${t.modelo}" onclick="editarApelido(this, '${serial}')"`
+                    : `title="Aguardando identificação do hardware (MAC)..."`;
                 return `
-                <div class="flex items-center justify-between p-3 bg-gray-50 border border-gray-100 rounded-lg shadow-sm">
-                    <div class="flex items-center gap-3">
-                        <span class="term-icon ${isTC ? 'term-icon--tc506' : 'term-icon--buscapreco'} text-blue-500 text-lg"></span>
+                <div class="g-term">
+                    <div class="g-term__lead">
+                        <span class="g-term__icon">
+                            <span class="term-icon ${isTC ? 'term-icon--tc506' : 'term-icon--buscapreco'}"></span>
+                        </span>
                         <div>
-                            <div class="font-bold text-sm text-gray-700">
+                            <div class="g-term__name">
                                 <span ${spanAttrs}>${nomeExibido}</span>
-                                <span class="font-mono text-xs font-normal text-gray-500 ml-1">(${t.ip})</span>
+                                <span class="g-term__ip">(${t.ip})</span>
                             </div>
-                            <div class="text-xs text-gray-500">Conectado às ${t.conectadoEm}</div>
+                            <div class="g-term__since">Conectado às ${t.conectadoEm}</div>
                         </div>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <button onclick="abrirModalDebug('${t.ip}')" class="text-xs bg-transparent text-gray-400 hover:text-gray-700 hover:bg-gray-100 px-2.5 py-1.5 rounded-md transition-colors font-semibold" title="Debug">
+                    <div class="g-term__actions">
+                        <button onclick="abrirModalDebug('${t.ip}')" class="g-iconbtn g-iconbtn--sm" title="Debug">
                             <i class="fa-solid fa-terminal"></i>
                         </button>
-                        <button onclick="abrirModalMidia('${t.ip}', '${t.tipo}')" class="text-xs bg-blue-100 text-blue-700 px-2.5 py-1.5 rounded-md hover:bg-blue-200 transition-colors font-semibold" title="Mídias">
+                        <button onclick="abrirModalMidia('${t.ip}', '${t.tipo}')" class="g-iconbtn g-iconbtn--sm g-iconbtn--primary" title="Mídias">
                             <i class="fa-solid fa-photo-film"></i>
                         </button>
                     </div>
@@ -564,7 +558,7 @@
             input.value = apelidos[serial] || '';
             input.maxLength = 32;
             input.placeholder = span.dataset.modelo || 'apelido';
-            input.className = 'border border-blue-400 rounded px-1.5 py-0.5 text-sm font-bold text-gray-700 w-44 focus:outline-none focus:ring-1 focus:ring-blue-500';
+            input.className = 'g-term__input';
             span.replaceWith(input);
             input.focus();
             input.select();
@@ -637,11 +631,10 @@
         function mudarAbaMain(aba, atualizarURL = true) {
             ['leituras', 'ranking', 'leitores', 'precificacao'].forEach(a => {
                 document.getElementById(`tabMain_${a}`).classList.add('hidden');
-                document.getElementById(`tabMainBtn_${a}`).className = "flex-1 py-3.5 font-bold border-b-2 border-transparent text-gray-500 hover:text-blue-600 transition-colors flex justify-center items-center gap-2";
+                document.getElementById(`tabMainBtn_${a}`).classList.remove('tab-active');
             });
             document.getElementById(`tabMain_${aba}`).classList.remove('hidden');
-            document.getElementById(`tabMainBtn_${aba}`).classList.replace('border-transparent', 'border-blue-600');
-            document.getElementById(`tabMainBtn_${aba}`).classList.replace('text-gray-500', 'text-blue-700');
+            document.getElementById(`tabMainBtn_${aba}`).classList.add('tab-active');
             if (atualizarURL) history.pushState({ aba }, '', '?' + (ABA_PARAM[aba] || 'recentes'));
 
             // A Precificação consulta o SIC a cada abertura — não vale manter
@@ -674,6 +667,7 @@
         document.addEventListener('keydown', (e) => {
             if (e.key !== 'Escape') return;
             if (!document.getElementById('modalDebug').classList.contains('hidden')) return fecharModalDebug();
+            if (!document.getElementById('modalCelular').classList.contains('hidden')) return fecharModalEl('modalCelular');
             if (!document.getElementById('modalMidia').classList.contains('hidden')) return fecharModalMidia();
             if (!document.getElementById('modalConfig').classList.contains('hidden')) return fecharModalConfig();
         });
@@ -691,10 +685,10 @@
             const container = document.getElementById('debugLogsContainer');
             const logs = logsPorIP[ipDebugAtual] || [];
             if (logs.length === 0) {
-                container.innerHTML = `<div id="placeholderDebug" class="text-gray-600 italic text-center mt-4">Aguardando comandos...</div>`;
+                container.innerHTML = `<div id="placeholderDebug" class="g-console__empty">Aguardando comandos...</div>`;
                 return;
             }
-            container.innerHTML = logs.map(log => `<div class="border-b border-gray-800 pb-1 mb-1 break-all"><span class="text-blue-400">[${log.hora}]</span> <span class="text-emerald-300">➜</span> <span class="text-gray-100">${log.msg.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</span></div>`).join('');
+            container.innerHTML = logs.map(log => `<div class="g-console__line"><span class="g-console__time">[${log.hora}]</span> <span class="g-console__arrow">➜</span> <span>${log.msg.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</span></div>`).join('');
         }
 
         socket.on('logDebug', (data) => {
@@ -708,12 +702,12 @@
         let playlistAtual = [];
 
         function mudarAba(aba) {
-            document.getElementById('tab_arquivos').classList.add('hidden');
-            document.getElementById('tab_playlist').classList.add('hidden');
-            document.getElementById('tabBtn_arquivos').className = "flex-1 py-3.5 font-bold border-b-2 border-transparent text-gray-500 hover:text-blue-600 transition-colors flex justify-center items-center gap-2";
-            document.getElementById('tabBtn_playlist').className = "flex-1 py-3.5 font-bold border-b-2 border-transparent text-gray-500 hover:text-blue-600 transition-colors flex justify-center items-center gap-2";
+            ['arquivos', 'playlist'].forEach(a => {
+                document.getElementById(`tab_${a}`).classList.add('hidden');
+                document.getElementById(`tabBtn_${a}`).classList.remove('tab-active');
+            });
             document.getElementById(`tab_${aba}`).classList.remove('hidden');
-            document.getElementById(`tabBtn_${aba}`).className = "flex-1 py-3.5 font-bold border-b-2 border-blue-600 text-blue-700 transition-colors flex justify-center items-center gap-2";
+            document.getElementById(`tabBtn_${aba}`).classList.add('tab-active');
         }
 
         function abrirModalMidia(ip, tipo) {
@@ -723,7 +717,7 @@
             const infoRes = document.getElementById('infoResolucao');
             if (tipo === 'BP') infoRes.innerText = "Resolução ideal: 320x240px | Max: 45KB (.jpg, .bmp)";
             else infoRes.innerText = "Resolução ideal: 480x272px | Max: 1MB (Imagens/Vídeos)";
-            document.getElementById('containerListaArquivos').innerHTML = '<div class="text-center text-gray-400 py-8 text-sm">Clique em "Ler Memória" para visualizar.</div>';
+            document.getElementById('containerListaArquivos').innerHTML = '<div class="g-empty">Clique em "Ler Memória" para visualizar.</div>';
             document.getElementById('previewMidiaContainer').classList.add('hidden');
             mudarAba('arquivos');
             abrirModalEl('modalMidia');
@@ -731,18 +725,13 @@
 
         function fecharModalMidia() { fecharModalEl('modalMidia'); }
 
+        // Barra de status do modal de mídias (info / sucesso / erro)
         function msg(texto, cor) {
-            const cores = {
-                blue:    { bg: '#dbeafe', texto: '#1e40af', borda: '#bfdbfe' },
-                emerald: { bg: '#d1fae5', texto: '#065f46', borda: '#a7f3d0' },
-                red:     { bg: '#fee2e2', texto: '#991b1b', borda: '#fecaca' }
-            };
-            const c = cores[cor] || cores.blue;
+            const variantes = { blue: 'g-status--info', emerald: 'g-status--success', red: 'g-status--error' };
             const s = document.getElementById('statusMidia');
             s.innerText = texto;
-            s.className = 'absolute top-0 left-0 right-0 text-sm text-center font-bold py-2 z-10 shadow-sm border-b';
-            s.style.background = c.bg; s.style.color = c.texto; s.style.borderColor = c.borda;
-            s.classList.remove('hidden'); setTimeout(() => s.classList.add('hidden'), 3500);
+            s.className = 'g-status ' + (variantes[cor] || variantes.blue);
+            setTimeout(() => s.classList.add('hidden'), 3500);
         }
 
         function buscarListaMidias() {
@@ -785,11 +774,11 @@
         function renderizarListaArquivos(files) {
             arquivosNaMemoria = [...new Set(files)];
             document.getElementById('containerListaArquivos').innerHTML = arquivosNaMemoria.map(f => `
-                <div class="flex items-center justify-between p-2.5 bg-white border border-gray-200 rounded-md shadow-sm hover:border-blue-300 transition-colors">
-                    <span class="truncate mr-2 font-mono text-sm text-gray-700"><i class="fa-regular ${f.includes('.conf') ? 'fa-file-lines' : 'fa-file-image'} text-blue-400 mr-2"></i>${f}</span>
-                    <div class="flex gap-1">
-                        <button onclick="socket.emit('${tipoTerminalAlvo === 'TC' ? 'solicitarMidia' : 'solicitarMidiaBP'}',{ip:ipAlvo,nomeArquivo:'${f}'})" class="bg-blue-50 text-blue-700 px-3 py-1 rounded border border-blue-200 text-xs font-semibold">Ver</button>
-                        <button onclick="deletarArquivo('${f}')" class="bg-red-50 text-red-600 px-3 py-1 rounded border border-red-200 text-xs hover:bg-red-600 hover:text-white transition-colors"><i class="fa-solid fa-trash-can"></i></button>
+                <div class="g-file">
+                    <span class="g-file__name truncate"><i class="fa-regular ${f.includes('.conf') ? 'fa-file-lines' : 'fa-file-image'}"></i><span class="truncate">${f}</span></span>
+                    <div class="g-file__actions">
+                        <button onclick="socket.emit('${tipoTerminalAlvo === 'TC' ? 'solicitarMidia' : 'solicitarMidiaBP'}',{ip:ipAlvo,nomeArquivo:'${f}'})" class="g-minibtn">Ver</button>
+                        <button onclick="deletarArquivo('${f}')" class="g-minibtn g-minibtn--danger" title="Apagar"><i class="fa-solid fa-trash-can"></i></button>
                     </div>
                 </div>`).join('');
             atualizarSelectNovaMidia();
@@ -802,8 +791,8 @@
             if(data.ip !== ipAlvo) return;
             document.getElementById('nomePreview').innerText = data.nome;
             const ext = data.nome.split('.').pop().toLowerCase(); const mediaRender = document.getElementById('mediaRender');
-            if (['mp4', 'avi', 'mov'].includes(ext)) mediaRender.innerHTML = `<video controls autoplay class="max-w-full max-h-[250px] rounded shadow-sm"><source src="data:video/${ext==='mp4'?'mp4':'x-msvideo'};base64,${data.base64}"></video>`;
-            else mediaRender.innerHTML = `<img src="data:image/${ext==='png'?'png':(ext==='gif'?'gif':(ext==='bmp'?'bmp':'jpeg'))};base64,${data.base64}" class="max-w-full max-h-[250px] object-contain rounded shadow-sm">`;
+            if (['mp4', 'avi', 'mov'].includes(ext)) mediaRender.innerHTML = `<video controls autoplay><source src="data:video/${ext==='mp4'?'mp4':'x-msvideo'};base64,${data.base64}"></video>`;
+            else mediaRender.innerHTML = `<img src="data:image/${ext==='png'?'png':(ext==='gif'?'gif':(ext==='bmp'?'bmp':'jpeg'))};base64,${data.base64}">`;
             document.getElementById('previewMidiaContainer').classList.remove('hidden');
         });
 
@@ -824,13 +813,16 @@
 
         function renderizarPlaylist() {
             const container = document.getElementById('containerPlaylist');
-            if (playlistAtual.length === 0) { container.innerHTML = '<div class="p-8 text-center text-sm text-gray-400">Vazia.</div>'; return; }
+            if (playlistAtual.length === 0) { container.innerHTML = '<div class="g-empty">Vazia.</div>'; return; }
             container.innerHTML = playlistAtual.map((item, idx) => `
-                <div class="p-2 grid grid-cols-12 gap-2 items-center bg-white border-b border-gray-50">
-                    <div class="col-span-2 flex gap-1"><button onclick="moverItem(${idx}, -1)" class="p-1 rounded bg-gray-50 border"><i class="fa-solid fa-chevron-up text-[10px]"></i></button><button onclick="moverItem(${idx}, 1)" class="p-1 rounded bg-gray-50 border"><i class="fa-solid fa-chevron-down text-[10px]"></i></button></div>
-                    <div class="col-span-6 font-mono text-xs truncate">${item.path}</div>
-                    <div class="col-span-3"><input type="number" id="time_${idx}" value="${item.time}" class="w-full border rounded text-center text-xs py-1"></div>
-                    <div class="col-span-1"><button onclick="removerDaPlaylist(${idx})" class="text-red-400"><i class="fa-solid fa-trash-can"></i></button></div>
+                <div class="g-pl-item">
+                    <div class="g-pl-move">
+                        <button onclick="moverItem(${idx}, -1)" class="g-iconbtn g-iconbtn--sm" title="Subir"><i class="fa-solid fa-chevron-up"></i></button>
+                        <button onclick="moverItem(${idx}, 1)" class="g-iconbtn g-iconbtn--sm" title="Descer"><i class="fa-solid fa-chevron-down"></i></button>
+                    </div>
+                    <div class="g-pl-path">${item.path}</div>
+                    <input type="number" id="time_${idx}" value="${item.time}" class="g-pl-time">
+                    <button onclick="removerDaPlaylist(${idx})" class="g-iconbtn g-iconbtn--sm" title="Remover" style="color:var(--md-sys-color-error)"><i class="fa-solid fa-trash-can"></i></button>
                 </div>`).join('');
         }
 
@@ -855,11 +847,11 @@
             const t = leitura.terminal || '';
             // Leitura/impressão vinda do app de celular
             if (/\bApp\b/i.test(t)) {
-                return `<i class="fa-solid fa-mobile-screen-button text-blue-600 mr-1.5 align-text-bottom"></i>`;
+                return `<i class="fa-solid fa-mobile-screen-button"></i>`;
             }
             const isTC = /TC-?506/i.test(t);
             const cls = isTC ? 'term-icon--tc506' : 'term-icon--buscapreco';
-            return `<span class="term-icon ${cls} mr-1.5 align-text-bottom"></span>`;
+            return `<span class="term-icon ${cls}"></span>`;
         }
 
         function nomeTerminalHist(leitura) {
@@ -868,8 +860,8 @@
             const ip = m ? m[1] : '';
             const ap = leitura.serial ? apelidos[leitura.serial] : null;
             const nome = ap || (leitura.terminal || '').replace(/\s*\([^)]*\)\s*$/, '').trim() || (leitura.terminal || '');
-            const linhaIp = ip ? `<span class="text-gray-400 font-normal" style="display:block;line-height:1.2;">(${ip})</span>` : '';
-            return `${icone}${nome}${linhaIp}`;
+            const linhaIp = ip ? `<span class="g-cell-faint g-mono" style="display:block;line-height:1.2;font-size:11px;">(${ip})</span>` : '';
+            return `<span class="g-term-cell">${icone} ${nome}</span>${linhaIp}`;
         }
 
         // ── Paginação (compartilhada pelas três tabelas) ────────────────────
@@ -880,7 +872,7 @@
 
         // Linhas vazias para manter a altura da tabela constante entre páginas.
         function linhasPreenchimento(qtd) {
-            return qtd > 0 ? '<tr style="height:3.5rem;"><td colspan="6"></td></tr>'.repeat(qtd) : '';
+            return qtd > 0 ? '<tr class="g-filler" style="height:3.5rem;"><td colspan="6"></td></tr>'.repeat(qtd) : '';
         }
 
         // Renderiza a barra de navegação; fnNome é o nome global da função de ir-para-página.
@@ -890,13 +882,12 @@
             if (total <= TAM_PAGINA) { el.innerHTML = ''; return; }
             const tp = totalPaginas(total);
             const ini = (pag - 1) * TAM_PAGINA;
-            const estilo = 'padding:.375rem .75rem;border:1px solid #e5e7eb;border-radius:.375rem;background:#fff;color:#374151;font-size:.75rem;font-weight:600;';
             const btn = (destino, habilitado, icone) =>
-                `<button ${habilitado ? `onclick="${fnNome}(${destino})"` : 'disabled'} style="${estilo}${habilitado ? 'cursor:pointer;' : 'opacity:.4;cursor:not-allowed;'}"><i class="fa-solid ${icone}"></i></button>`;
+                `<button class="g-pag__btn" ${habilitado ? `onclick="${fnNome}(${destino})"` : 'disabled'}><i class="fa-solid ${icone}"></i></button>`;
             el.innerHTML = `
-                <div class="flex items-center justify-between gap-3 px-4 sm:px-6 py-3 border-t border-gray-100 bg-gray-50">
-                    <span class="text-xs text-gray-500">${ini + 1}–${Math.min(ini + TAM_PAGINA, total)} de ${total} • página ${pag}/${tp}</span>
-                    <div class="flex items-center gap-2">
+                <div class="g-pag">
+                    <span class="g-pag__info">${ini + 1}–${Math.min(ini + TAM_PAGINA, total)} de ${total} • página ${pag}/${tp}</span>
+                    <div class="g-pag__nav">
                         ${btn(pag - 1, pag > 1, 'fa-chevron-left')}
                         ${btn(pag + 1, pag < tp, 'fa-chevron-right')}
                     </div>
@@ -914,17 +905,16 @@
 
         function linhaLeitura(leitura) {
             const isErro = leitura.status === 'erro' || leitura.nome === '❌ NÃO ENCONTRADO';
-            const corNome = isErro ? 'text-red-600 font-bold' : 'text-gray-900 font-medium';
-            const corPreco = isErro ? 'text-gray-400' : 'text-emerald-600 font-semibold';
+            const jaImpresso = leitura.id && impressos.has(leitura.id);
             return `
-                <tr class="hover:bg-blue-50 transition-colors" style="height:3.5rem;">
-                    <td class="px-4 py-4 text-xs text-gray-500">${leitura.hora}</td>
-                    <td class="px-4 py-4 font-mono text-xs text-blue-600">${nomeTerminalHist(leitura)}</td>
-                    <td class="px-4 py-4 font-mono text-gray-600" style="font-size:0.68rem;">${leitura.codigo}</td>
-                    <td class="px-4 py-4 ${corNome}">${leitura.nome}</td>
-                    <td class="px-4 py-4 text-xs ${corPreco}">${leitura.preco}</td>
-                    <td class="px-4 py-4 text-center">
-                        <button onclick="imprimirEtiqueta('${leitura.codigo}', '${leitura.id || ''}')" class="${leitura.id && impressos.has(leitura.id) ? 'text-gray-400 hover:text-blue-700' : 'bg-blue-100 hover:bg-blue-200 text-blue-700'} px-3 py-2 rounded text-xs font-semibold transition-colors" title="${leitura.id && impressos.has(leitura.id) ? 'Preço já impresso — imprimir novamente' : 'Imprimir Etiqueta'}">
+                <tr style="height:3.5rem;">
+                    <td class="g-cell-muted">${leitura.hora}</td>
+                    <td class="g-cell-muted">${nomeTerminalHist(leitura)}</td>
+                    <td class="g-cell-num">${leitura.codigo}</td>
+                    <td class="${isErro ? 'g-cell-error' : 'g-cell-strong'}">${leitura.nome}</td>
+                    <td class="${isErro ? 'g-cell-faint' : 'g-cell-price'}">${leitura.preco}</td>
+                    <td class="g-cell-center">
+                        <button onclick="imprimirEtiqueta('${leitura.codigo}', '${leitura.id || ''}')" class="g-print${jaImpresso ? ' g-print--done' : ''}" title="${jaImpresso ? 'Preço já impresso — imprimir novamente' : 'Imprimir Etiqueta'}">
                             <i class="fa-solid fa-print"></i>
                         </button>
                     </td>
@@ -936,7 +926,7 @@
             const tbody = document.getElementById('tabelaLeituras');
             if (!tbody) return;
             if (!historicoCompleto.length) {
-                tbody.innerHTML = '<tr id="linhaVazia"><td colspan="6" class="text-center py-12 text-gray-400">Nenhuma leitura registrada.</td></tr>';
+                tbody.innerHTML = '<tr id="linhaVazia"><td colspan="6"><div class="g-tableempty">Nenhuma leitura registrada.</div></td></tr>';
                 renderPaginacao('pagLeiturasBar', 1, 0, 'irLeituras');
                 return;
             }
@@ -949,7 +939,7 @@
             renderPaginacao('pagLeiturasBar', pagLeituras, view.length, 'irLeituras');
             if (animarTopo && pagLeituras === 1) {
                 const tr = tbody.firstElementChild;
-                if (tr) { tr.classList.add('bg-emerald-50'); setTimeout(() => tr.classList.remove('bg-emerald-50'), 1500); }
+                if (tr) { tr.classList.add('g-new'); setTimeout(() => tr.classList.remove('g-new'), 1800); }
             }
         }
 
@@ -965,16 +955,15 @@
         }
 
         function linhaRankingProduto(item, index) {
-            const corNome = item.erro ? 'text-red-600 font-bold' : 'text-gray-900 font-medium';
             return `
-                <tr class="hover:bg-gray-50 border-b border-gray-50" style="height:3.5rem;">
-                    <td class="px-4 py-4 text-center font-bold text-gray-400">#${index + 1}</td>
-                    <td class="px-4 py-4 font-mono text-gray-600" style="font-size:0.68rem;">${item.codigo}</td>
-                    <td class="px-4 py-4 ${corNome}">${item.nome}</td>
-                    <td class="px-4 py-4 text-xs font-semibold text-emerald-600">${item.preco !== '-' ? item.preco : ''}</td>
-                    <td class="px-4 py-4 text-center font-bold text-blue-600">${item.qtd}x</td>
-                    <td class="px-4 py-4 text-center">
-                        <button onclick="imprimirEtiqueta('${item.codigo}')" class="bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-2 rounded text-xs font-semibold transition-colors" title="Imprimir Etiqueta">
+                <tr style="height:3.5rem;">
+                    <td class="g-cell-center g-rank">#${index + 1}</td>
+                    <td class="g-cell-num">${item.codigo}</td>
+                    <td class="${item.erro ? 'g-cell-error' : 'g-cell-strong'}">${item.nome}</td>
+                    <td class="g-cell-price">${item.preco !== '-' ? item.preco : ''}</td>
+                    <td class="g-cell-center g-hits">${item.qtd}x</td>
+                    <td class="g-cell-center">
+                        <button onclick="imprimirEtiqueta('${item.codigo}')" class="g-print" title="Imprimir Etiqueta">
                             <i class="fa-solid fa-print"></i>
                         </button>
                     </td>
@@ -984,7 +973,7 @@
         function calcularRanking() {
             const ranking = agruparProdutos(historicoCompleto);
             const tbody = document.getElementById('tabelaRanking');
-            if (ranking.length === 0) { tbody.innerHTML = '<tr><td colspan="6" class="text-center py-12 text-gray-400">Nenhum dado para o ranking.</td></tr>'; renderPaginacao('pagRankingBar', 1, 0, 'irRanking'); return; }
+            if (ranking.length === 0) { tbody.innerHTML = '<tr><td colspan="6"><div class="g-tableempty">Nenhum dado para o ranking.</div></td></tr>'; renderPaginacao('pagRankingBar', 1, 0, 'irRanking'); return; }
             const tp = totalPaginas(ranking.length);
             if (pagRanking > tp) pagRanking = tp;
             const ini = (pagRanking - 1) * TAM_PAGINA;
@@ -1016,7 +1005,7 @@
             leitoresAtuais = Object.values(cont).sort((a, b) => b.qtd - a.qtd);
             const container = document.getElementById('graficoLeitores');
             if (!leitoresAtuais.length) {
-                container.innerHTML = '<div class="text-center py-12 text-gray-400">Nenhum dado disponível.</div>';
+                container.innerHTML = '<div class="g-empty">Nenhum dado disponível.</div>';
                 leitorFiltro = null;
                 document.getElementById('leitorRankingWrap').classList.add('hidden');
                 return;
@@ -1026,19 +1015,15 @@
                 const pct = Math.max(4, Math.round((item.qtd / max) * 100));
                 const ativo = leitorFiltro === item.chave;
                 const iconeHtml = item.tipo === 'APP'
-                    ? '<i class="fa-solid fa-mobile-screen-button text-blue-500"></i>'
-                    : `<span class="term-icon ${item.tipo === 'TC' ? 'term-icon--tc506' : 'term-icon--buscapreco'} text-blue-500"></span>`;
+                    ? '<i class="fa-solid fa-mobile-screen-button"></i>'
+                    : `<span class="term-icon ${item.tipo === 'TC' ? 'term-icon--tc506' : 'term-icon--buscapreco'}"></span>`;
                 return `
-                <button onclick="selecionarLeitor(${idx})" class="w-full text-left focus:outline-none">
-                    <div class="flex items-center justify-between text-sm mb-1">
-                        <span class="font-semibold ${ativo ? 'text-blue-700' : 'text-gray-700'} flex items-center gap-1.5 truncate mr-2">
-                            ${iconeHtml}${item.nome}
-                        </span>
-                        <span class="shrink-0 text-xs font-bold ${ativo ? 'text-blue-700' : 'text-gray-500'}">${item.qtd} leitura${item.qtd > 1 ? 's' : ''}</span>
+                <button onclick="selecionarLeitor(${idx})" class="g-bar${ativo ? ' is-active' : ''}">
+                    <div class="g-bar__head">
+                        <span class="g-bar__name truncate">${iconeHtml}${item.nome}</span>
+                        <span class="g-bar__qtd">${item.qtd} leitura${item.qtd > 1 ? 's' : ''}</span>
                     </div>
-                    <div class="w-full rounded-md overflow-hidden" style="height:1.5rem;background:#e5e7eb;">
-                        <div class="rounded-md" style="height:100%;width:${pct}%;background:${ativo ? '#2563eb' : '#60a5fa'};transition:width .3s,background .2s;"></div>
-                    </div>
+                    <div class="g-bar__track"><div class="g-bar__fill" style="width:${pct}%"></div></div>
                 </button>`;
             }).join('');
             if (leitorFiltro && cont[leitorFiltro]) renderizarRankingLeitor();
@@ -1060,7 +1045,7 @@
             const ranking = agruparProdutos(historicoCompleto.filter(l => chaveLeitor(l) === leitorFiltro));
             const tbody = document.getElementById('tabelaLeitorRanking');
             if (!ranking.length) {
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-12 text-gray-400">Nenhuma leitura deste leitor.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6"><div class="g-tableempty">Nenhuma leitura deste leitor.</div></td></tr>';
                 renderPaginacao('pagLeitorBar', 1, 0, 'irLeitor');
                 wrap.classList.remove('hidden');
                 return;
@@ -1138,13 +1123,11 @@
                     })
                 });
                 const data = await res.json();
-                msgEl.className = 'text-xs font-semibold text-center py-2 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200';
+                msgEl.className = 'g-msg g-msg--success';
                 msgEl.innerText = 'Salvo! Reinicie o servidor para aplicar.';
-                msgEl.classList.remove('hidden');
             } catch (e) {
-                msgEl.className = 'text-xs font-semibold text-center py-2 rounded-lg bg-red-50 text-red-700 border border-red-200';
+                msgEl.className = 'g-msg g-msg--error';
                 msgEl.innerText = 'Erro ao salvar configurações.';
-                msgEl.classList.remove('hidden');
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Salvar Ajustes';
@@ -1216,11 +1199,8 @@
 
         function msgPush(texto, ok) {
             const el = document.getElementById('msgPush');
-            el.className = `text-xs font-semibold text-center py-1.5 rounded-lg ${ok
-                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                : 'bg-red-50 text-red-700 border border-red-200'}`;
+            el.className = 'g-msg ' + (ok ? 'g-msg--success' : 'g-msg--error');
             el.innerText = texto;
-            el.classList.remove('hidden');
         }
 
         async function ativarNotificacoes() {

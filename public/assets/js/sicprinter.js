@@ -12,14 +12,14 @@
     function msg(texto, tipo) {
         const el = $('msgSic');
         if (!el) return;
+        // Variantes de mensagem do design system (gertec.css / tokens M3)
         const cores = {
-            ok:   'bg-emerald-50 text-emerald-700 border border-emerald-200',
-            erro: 'bg-red-50 text-red-700 border border-red-200',
-            info: 'bg-blue-50 text-blue-700 border border-blue-200',
+            ok:   'g-msg--success',
+            erro: 'g-msg--error',
+            info: 'g-msg--info',
         };
-        el.className = 'text-xs font-semibold text-center py-2 rounded-lg ' + (cores[tipo] || cores.info);
+        el.className = 'g-msg ' + (cores[tipo] || cores.info);
         el.innerText = texto;
-        el.classList.remove('hidden');
     }
     function limparMsg() { const el = $('msgSic'); if (el) el.classList.add('hidden'); }
 

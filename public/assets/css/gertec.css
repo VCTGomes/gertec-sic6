@@ -1,0 +1,567 @@
+/* ════════════════════════════════════════════════════════════════════════════
+   gertec.css — Monitor de Terminais (Material 3)
+
+   Camada de PÁGINA. Toda a paleta, tipografia, cards, botões, modais, abas,
+   chips e badges vêm do design system em rmf.css (tokens --md-sys-color-*).
+   Aqui ficam só as peças que o design system não cobre: a casca da página,
+   as tabelas de dados, a lista de terminais, o gráfico de leitores, o
+   console de debug e o editor de playlist.
+
+   ⚠️  Não edite rmf.css. Se uma cor precisar mudar, ela muda lá.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* ─────────────────────────────────────────────────────────────────
+   0. Utilitários — substituem os do Tailwind usados pelo JS
+   O JS alterna `hidden` / `flex` / `inline-flex` via classList; o
+   !important garante que `hidden` vença qualquer display de base.
+   ───────────────────────────────────────────────────────────────── */
+.hidden        { display: none !important; }
+.flex          { display: flex; }
+.inline-flex   { display: inline-flex; }
+.truncate      { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.g-mono        { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.g-relative    { position: relative; }
+
+/* ─────────────────────────────────────────────────────────────────
+   1. Casca da página
+   ───────────────────────────────────────────────────────────────── */
+html, body { height: 100%; }
+body.nv-body {
+  display: flex; flex-direction: column;
+  height: 100vh; overflow: hidden;
+}
+
+/* Área rolável entre a app-bar (fixa) e o fim da tela */
+.g-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; width: 100%; }
+
+.g-main {
+  max-width: 80rem; width: 100%; margin: 0 auto;
+  padding: 16px; display: grid; gap: 16px;
+  grid-template-columns: 1fr; align-items: start;
+}
+@media (min-width: 1024px) {
+  .g-main { padding: 24px; gap: 24px; grid-template-columns: 400px minmax(0, 1fr); }
+  .g-sidebar { position: sticky; top: 24px; align-self: start; }
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   2. Top App Bar (M3 — small)
+   Superfície neutra, como no app: a marca vive no ícone e no título,
+   não num bloco de cor. `is-scrolled` acompanha o conteúdo rolando
+   por baixo (mesmo degrau do .m3-appbar do design system).
+   ───────────────────────────────────────────────────────────────── */
+/* O padding do elemento é reservado ao Window Controls Overlay (header.css);
+   o respiro visual vive no __inner, para não brigar com o env(titlebar-*). */
+.g-appbar {
+  position: sticky; top: 0; z-index: 40; flex-shrink: 0;
+  background: var(--md-sys-color-surface);
+  color: var(--md-sys-color-on-surface);
+  transition: background-color .2s ease;
+}
+/* Sem linha divisória: a separação em M3 vem do degrau de cor ao rolar. */
+.g-appbar.is-scrolled { background: var(--md-rmf-appbar-scrolled); }
+.g-appbar__inner {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  height: var(--md-rmf-appbar-height); padding: 0 8px 0 16px;
+}
+.g-appbar__lead  { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.g-appbar__logo  { height: 28px; width: auto; object-fit: contain; }
+.g-appbar__title {
+  font-family: var(--md-ref-typeface-brand);
+  font-size: 22px; font-weight: 500; line-height: 28px; letter-spacing: 0;
+  color: var(--md-sys-color-on-surface);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.g-appbar__actions { display: flex; align-items: center; gap: 4px; }
+
+/* Botão de ícone da app-bar (M3 standard icon button, alvo de 48px) */
+.g-iconbtn {
+  width: 48px; height: 48px; flex-shrink: 0; padding: 0;
+  border: none; border-radius: 50%; background: transparent; cursor: pointer;
+  color: var(--md-sys-color-on-surface-variant); font-size: 18px;
+  display: inline-flex; align-items: center; justify-content: center;
+  text-decoration: none; transition: background .15s, color .15s;
+}
+.g-iconbtn:hover { background: color-mix(in srgb, var(--md-sys-color-on-surface) 8%, transparent); }
+.g-iconbtn--sm { width: 36px; height: 36px; font-size: 14px; }
+.g-iconbtn--primary { color: var(--md-sys-color-primary); }
+
+/* Botão com texto na app-bar (M3 text button) */
+.g-appbar__btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 40px; padding: 0 16px; border: none; border-radius: var(--rmf-radius-full);
+  background: transparent; color: var(--md-sys-color-primary);
+  font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+  transition: background .15s;
+}
+.g-appbar__btn:hover { background: color-mix(in srgb, var(--md-sys-color-primary) 10%, transparent); }
+
+/* ─────────────────────────────────────────────────────────────────
+   3. Cards / seções
+   ───────────────────────────────────────────────────────────────── */
+.g-card {
+  display: flex; flex-direction: column; width: 100%; min-width: 0;
+  border-radius: var(--rmf-radius-md); overflow: hidden;
+  background: var(--md-sys-color-surface-container-low);
+  color: var(--md-sys-color-on-surface);
+  box-shadow: var(--rmf-elev-1);
+}
+.g-card__pad { padding: 16px; }
+
+/* Cabeçalho de seção dentro do card */
+.g-sechead {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: 12px; padding: 14px 16px;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+}
+.g-sechead--sub  { background: var(--md-sys-color-surface-container); }
+.g-sechead--click { cursor: pointer; user-select: none; }
+.g-sechead--click:hover { background: var(--md-sys-color-surface-container-high); }
+.g-sechead__title {
+  display: flex; align-items: center; gap: 8px; margin: 0; min-width: 0;
+  font-size: 16px; font-weight: 500; line-height: 24px; letter-spacing: .15px;
+  color: var(--md-sys-color-on-surface);
+}
+.g-sechead__title i { color: var(--md-sys-color-primary); font-size: 15px; }
+.g-sechead__sub {
+  font-size: 12px; font-weight: 400; letter-spacing: .4px;
+  color: var(--md-sys-color-on-surface-variant);
+}
+.g-sechead__tools { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+
+/* Contador em pílula (nº de terminais) */
+.g-count {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 24px; height: 24px; padding: 0 8px; border-radius: var(--rmf-radius-full);
+  font-size: 12px; font-weight: 700;
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+}
+
+/* Botão de texto destrutivo / discreto no cabeçalho */
+.g-textbtn {
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 32px; padding: 0 12px; border: none; border-radius: var(--rmf-radius-full);
+  background: transparent; color: var(--md-sys-color-primary);
+  font: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: background .15s;
+}
+.g-textbtn:hover { background: color-mix(in srgb, var(--md-sys-color-primary) 10%, transparent); }
+.g-textbtn--danger { color: var(--md-sys-color-error); }
+.g-textbtn--danger:hover { background: var(--rmf-danger-fill); }
+
+/* Painel de aba (o JS troca `hidden`) */
+.g-tabpanel { display: flex; flex-direction: column; min-width: 0; }
+
+/* Chevron do painel recolhível */
+.g-chevron { color: var(--md-sys-color-on-surface-variant); transition: transform .2s ease; }
+
+/* ─────────────────────────────────────────────────────────────────
+   4. Abas — usa .nv-tabs/.nv-tab do design system, só ajusta a
+   pílula do badge de divergentes.
+   ───────────────────────────────────────────────────────────────── */
+.nv-tabs { background: var(--md-sys-color-surface-container-low); }
+.nv-tab__badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 18px; height: 18px; padding: 0 5px; border-radius: var(--rmf-radius-full);
+  font-size: 10px; font-weight: 800; line-height: 1;
+  background: var(--md-sys-color-error); color: var(--md-sys-color-on-error);
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   5. Tabelas de dados (M3 data table)
+   ───────────────────────────────────────────────────────────────── */
+.g-tablewrap { overflow-x: auto; }
+.g-table {
+  width: 100%; border-collapse: collapse; text-align: left;
+  font-size: 14px; color: var(--md-sys-color-on-surface-variant);
+}
+.g-table--wide { min-width: 700px; }
+.g-table--xwide { min-width: 860px; }
+.g-table thead th {
+  padding: 12px 16px; white-space: nowrap;
+  background: var(--md-sys-color-surface-container);
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+}
+.g-table tbody td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+}
+.g-table tbody tr:last-child td { border-bottom: none; }
+.g-table tbody tr:hover td { background: color-mix(in srgb, var(--md-sys-color-on-surface) 4%, transparent); }
+/* Linhas de preenchimento (mantêm a altura da tabela entre páginas) */
+.g-table tbody tr.g-filler:hover td { background: transparent; }
+
+.g-cell-center { text-align: center; }
+.g-cell-right  { text-align: right; }
+.g-cell-num    { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+.g-cell-strong { color: var(--md-sys-color-on-surface); font-weight: 500; }
+.g-cell-price  { color: var(--md-sys-color-success); font-weight: 600; font-size: 13px; }
+.g-cell-error  { color: var(--md-sys-color-error); font-weight: 700; }
+.g-cell-muted  { color: var(--md-sys-color-on-surface-variant); font-size: 12px; }
+.g-cell-faint  { color: var(--md-sys-color-outline); }
+.g-rank        { font-weight: 700; color: var(--md-sys-color-on-surface-variant); }
+/* Célula "Terminal": ícone + nome na 1ª linha, IP embaixo */
+.g-term-cell   { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; color: var(--md-sys-color-on-surface); }
+.g-term-cell i, .g-term-cell .term-icon { color: var(--md-sys-color-primary); flex-shrink: 0; }
+.g-hits        { font-weight: 700; color: var(--md-sys-color-primary); }
+.g-row-alert td { background: var(--rmf-danger-fill); }
+
+/* Estado vazio / carregando dentro da tabela */
+.g-tableempty {
+  padding: 48px 16px; text-align: center;
+  color: var(--md-sys-color-on-surface-variant); font-size: 14px;
+}
+.g-tableempty i { display: block; font-size: 20px; margin-bottom: 8px; opacity: .8; }
+.g-tableempty--error { color: var(--md-sys-color-error); font-weight: 600; }
+
+/* Realce da leitura recém-chegada */
+@keyframes g-flash {
+  from { background: var(--md-sys-color-success-container); }
+  to   { background: transparent; }
+}
+.g-table tbody tr.g-new td { animation: g-flash 1.6s ease-out; }
+
+/* Botão de imprimir na linha (M3 filled tonal icon button) */
+.g-print {
+  width: 36px; height: 36px; padding: 0; border: none; border-radius: var(--rmf-radius-sm);
+  cursor: pointer; font-size: 13px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+  transition: background .15s, filter .15s;
+}
+.g-print:hover { filter: brightness(.95); }
+.g-print:disabled { opacity: .6; cursor: default; }
+/* Já impresso: recua para um botão fantasma */
+.g-print--done {
+  background: transparent; color: var(--md-sys-color-on-surface-variant);
+  box-shadow: inset 0 0 0 1px var(--md-sys-color-outline-variant);
+}
+.g-print--done:hover { background: var(--md-sys-color-surface-container-high); filter: none; }
+.g-print--error { background: var(--md-sys-color-error); color: var(--md-sys-color-on-error); }
+
+/* ─────────────────────────────────────────────────────────────────
+   6. Paginação
+   ───────────────────────────────────────────────────────────────── */
+.g-pag {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--md-sys-color-outline-variant);
+  background: var(--md-sys-color-surface-container);
+}
+.g-pag__info { font-size: 12px; color: var(--md-sys-color-on-surface-variant); }
+.g-pag__nav  { display: flex; align-items: center; gap: 4px; }
+.g-pag__btn {
+  width: 36px; height: 36px; padding: 0; border: none; border-radius: 50%;
+  background: transparent; color: var(--md-sys-color-on-surface-variant);
+  font-size: 13px; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: background .15s;
+}
+.g-pag__btn:hover:not(:disabled) { background: color-mix(in srgb, var(--md-sys-color-on-surface) 8%, transparent); }
+.g-pag__btn:disabled { opacity: .38; cursor: not-allowed; }
+
+/* ─────────────────────────────────────────────────────────────────
+   7. Lista de terminais conectados
+   ───────────────────────────────────────────────────────────────── */
+.g-terms { display: flex; flex-direction: column; gap: 8px; }
+.g-term {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 10px 12px; border-radius: var(--rmf-radius-sm);
+  background: var(--md-sys-color-surface-container);
+  transition: background .15s;
+}
+.g-term:hover { background: var(--md-sys-color-surface-container-high); }
+.g-term__lead { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.g-term__icon {
+  width: 40px; height: 40px; flex-shrink: 0; border-radius: 12px; font-size: 17px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+}
+.g-term__name {
+  font-size: 14px; font-weight: 600; color: var(--md-sys-color-on-surface);
+  display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap;
+}
+.g-term__ip {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px; font-weight: 400; color: var(--md-sys-color-on-surface-variant);
+}
+.g-term__since { font-size: 12px; color: var(--md-sys-color-on-surface-variant); }
+.g-term__actions { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
+/* Nome editável (apelido do leitor) */
+.apelido-nome {
+  cursor: pointer; border-bottom: 1px dashed transparent;
+  transition: color .15s, border-color .15s;
+}
+.apelido-nome:hover { color: var(--md-sys-color-primary); border-bottom-color: var(--md-sys-color-primary); }
+.g-term__input {
+  width: 11rem; height: 28px; padding: 0 8px; font: inherit; font-size: 14px; font-weight: 600;
+  border-radius: var(--rmf-radius-sm);
+  border: 1px solid var(--md-sys-color-primary);
+  background: var(--md-sys-color-surface-container-lowest);
+  color: var(--md-sys-color-on-surface);
+}
+.g-term__input:focus { outline: none; box-shadow: inset 0 0 0 1px var(--md-sys-color-primary); }
+
+/* Estado vazio de um bloco (sem tabela) */
+.g-empty {
+  padding: 32px 16px; text-align: center;
+  font-size: 13px; color: var(--md-sys-color-on-surface-variant);
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   8. Gráfico "Leitores Mais Usados" (barras M3)
+   ───────────────────────────────────────────────────────────────── */
+.g-chart { display: flex; flex-direction: column; gap: 14px; padding: 16px; }
+.g-bar {
+  width: 100%; padding: 0; border: none; background: transparent;
+  text-align: left; cursor: pointer; font: inherit;
+  border-radius: var(--rmf-radius-sm);
+}
+.g-bar:focus-visible { outline: 2px solid var(--md-sys-color-primary); outline-offset: 2px; }
+.g-bar__head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  margin-bottom: 6px; font-size: 14px;
+}
+.g-bar__name {
+  display: inline-flex; align-items: center; gap: 8px; min-width: 0;
+  font-weight: 600; color: var(--md-sys-color-on-surface-variant);
+}
+.g-bar__name i, .g-bar__name .term-icon { color: var(--md-sys-color-on-surface-variant); flex-shrink: 0; }
+.g-bar__qtd { flex-shrink: 0; font-size: 12px; font-weight: 700; color: var(--md-sys-color-on-surface-variant); }
+.g-bar__track {
+  height: 20px; width: 100%; overflow: hidden;
+  border-radius: var(--rmf-radius-full);
+  background: var(--md-sys-color-surface-container-highest);
+}
+.g-bar__fill {
+  height: 100%; border-radius: var(--rmf-radius-full);
+  background: var(--md-sys-color-primary); opacity: .55;
+  transition: width .3s ease, opacity .2s, background .2s;
+}
+.g-bar:hover .g-bar__fill { opacity: .75; }
+.g-bar.is-active .g-bar__name,
+.g-bar.is-active .g-bar__qtd,
+.g-bar.is-active .g-bar__name i,
+.g-bar.is-active .g-bar__name .term-icon { color: var(--md-sys-color-primary); }
+.g-bar.is-active .g-bar__fill { opacity: 1; }
+
+/* ─────────────────────────────────────────────────────────────────
+   9. Barra de filtros da Precificação
+   ───────────────────────────────────────────────────────────────── */
+.g-filterbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+/* Segmentado (Hoje / Ontem / 7 dias) — .rmf-seg do design system, compacto */
+.g-filterbar .rmf-seg { flex-shrink: 0; }
+.g-filterbar .rmf-seg__btn { padding: 6px 14px; }
+/* Caixa de busca compacta */
+.g-search { width: 15rem; max-width: 100%; }
+.g-search input, .g-search .nv-input { height: 38px; font-size: 13px; }
+/* Checkbox M3 */
+.g-check {
+  display: inline-flex; align-items: center; gap: 8px;
+  cursor: pointer; user-select: none;
+  font-size: 13px; font-weight: 600; white-space: nowrap;
+  color: var(--md-sys-color-on-surface-variant);
+}
+.g-check input { width: 16px; height: 16px; margin: 0; cursor: pointer; accent-color: var(--md-sys-color-primary); }
+.g-check--danger { color: var(--md-sys-color-error); }
+.g-check--danger input { accent-color: var(--md-sys-color-error); }
+.g-strong-danger { color: var(--md-sys-color-error); font-weight: 700; }
+
+/* ─────────────────────────────────────────────────────────────────
+   10. Modais — sobre .nv-modal/.nv-modal__panel do design system.
+   A animação de entrada é controlada por `is-open` (JS).
+   ───────────────────────────────────────────────────────────────── */
+.nv-modal { opacity: 0; transition: opacity .2s ease; }
+.nv-modal.is-open { opacity: 1; }
+.nv-modal .modal-panel {
+  opacity: 0; transform: scale(.96) translateY(8px);
+  transition: transform .2s ease, opacity .2s ease;
+}
+.nv-modal.is-open .modal-panel { opacity: 1; transform: scale(1) translateY(0); }
+@media (prefers-reduced-motion: reduce) {
+  .nv-modal, .nv-modal .modal-panel { transition: none; }
+}
+.nv-modal__panel--xl { max-width: 42rem; }
+
+/* Chips de contexto no cabeçalho do modal (IP / tipo do terminal) */
+.g-modalchips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.g-chip-ip, .g-chip-tipo {
+  display: inline-flex; align-items: center; height: 22px; padding: 0 8px;
+  border-radius: var(--rmf-radius-sm);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px; font-weight: 600; line-height: 1;
+}
+.g-chip-ip   { background: var(--md-sys-color-surface-container-highest); color: var(--md-sys-color-on-surface-variant); }
+.g-chip-tipo { background: var(--md-sys-color-success-container); color: var(--md-sys-color-on-success-container); }
+
+/* Barra de status flutuante do modal de mídias */
+.g-status {
+  position: absolute; top: 0; left: 0; right: 0; z-index: 10;
+  padding: 8px 16px; text-align: center;
+  font-size: 13px; font-weight: 600;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
+}
+.g-status--info    { background: var(--rmf-info-fill);    color: var(--rmf-info);    border-color: var(--rmf-info-border); }
+.g-status--success { background: var(--rmf-success-fill); color: var(--rmf-success); border-color: var(--rmf-success-border); }
+.g-status--error   { background: var(--rmf-danger-fill);  color: var(--rmf-danger);  border-color: var(--rmf-danger-border); }
+
+/* Mensagem inline (config / push / sicprinter) */
+.g-msg {
+  padding: 8px 12px; border-radius: var(--rmf-radius-sm);
+  font-size: 12px; font-weight: 600; text-align: center;
+  border: 1px solid transparent;
+}
+.g-msg--info    { background: var(--rmf-info-fill);    color: var(--rmf-info);    border-color: var(--rmf-info-border); }
+.g-msg--success { background: var(--rmf-success-fill); color: var(--rmf-success); border-color: var(--rmf-success-border); }
+.g-msg--error   { background: var(--rmf-danger-fill);  color: var(--rmf-danger);  border-color: var(--rmf-danger-border); }
+
+/* Rótulo de campo (M3 outlined-ish, o campo em si é .nv-control) */
+.g-field { display: flex; flex-direction: column; gap: 6px; }
+.g-field__label {
+  font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--md-sys-color-on-surface-variant);
+}
+.g-field__hint { font-size: 11px; line-height: 1.5; color: var(--md-sys-color-on-surface-variant); }
+.g-field .nv-input { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.g-group {
+  display: flex; flex-direction: column; gap: 8px;
+  padding-top: 16px; border-top: 1px solid var(--md-sys-color-outline-variant);
+}
+.nv-btn--sm { height: 38px; font-size: 13px; }
+
+/* ─────────────────────────────────────────────────────────────────
+   11. Gerenciador de mídias
+   ───────────────────────────────────────────────────────────────── */
+.g-media-info { font-size: 12px; text-align: center; color: var(--md-sys-color-on-surface-variant); }
+.g-media-actions { display: flex; gap: 12px; }
+.g-media-actions > * { flex: 1; }
+.g-filelist {
+  display: flex; flex-direction: column; gap: 8px;
+  min-height: 7.5rem; padding: 8px; border-radius: var(--rmf-radius-sm);
+  background: var(--md-sys-color-surface-container);
+}
+.g-file {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 8px 12px; border-radius: var(--rmf-radius-sm);
+  background: var(--md-sys-color-surface-container-low);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  transition: border-color .15s;
+}
+.g-file:hover { border-color: var(--md-sys-color-primary); }
+.g-file__name {
+  display: flex; align-items: center; gap: 8px; min-width: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px; color: var(--md-sys-color-on-surface);
+}
+.g-file__name i { color: var(--md-sys-color-primary); flex-shrink: 0; }
+.g-file__actions { display: flex; gap: 4px; flex-shrink: 0; }
+.g-minibtn {
+  height: 28px; padding: 0 12px; border: none; border-radius: var(--rmf-radius-full);
+  font: inherit; font-size: 12px; font-weight: 600; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+  transition: filter .15s, background .15s;
+}
+.g-minibtn:hover { filter: brightness(.95); }
+.g-minibtn--danger { background: var(--md-sys-color-error-container); color: var(--md-sys-color-on-error-container); }
+.g-minibtn--danger:hover { background: var(--md-sys-color-error); color: var(--md-sys-color-on-error); filter: none; }
+
+.g-preview {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  min-height: 9.5rem; padding: 12px; border-radius: var(--rmf-radius-sm);
+  background: var(--md-sys-color-surface-container);
+}
+.g-preview__name {
+  margin: 0; padding: 2px 8px; border-radius: var(--rmf-radius-sm);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px;
+  background: var(--md-sys-color-surface-container-lowest);
+  color: var(--md-sys-color-on-surface-variant);
+}
+.g-preview__media { display: flex; justify-content: center; width: 100%; }
+.g-preview__media img, .g-preview__media video {
+  max-width: 100%; max-height: 250px; object-fit: contain;
+  border-radius: var(--rmf-radius-sm);
+}
+
+/* Playlist */
+.g-playlist {
+  max-height: 35vh; overflow-y: auto; border-radius: var(--rmf-radius-sm);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  background: var(--md-sys-color-surface-container-lowest);
+}
+.g-pl-item {
+  display: grid; grid-template-columns: auto 1fr 5rem auto; align-items: center; gap: 8px;
+  padding: 8px 10px; border-bottom: 1px solid var(--md-sys-color-outline-variant);
+}
+.g-pl-item:last-child { border-bottom: none; }
+.g-pl-move { display: flex; gap: 2px; }
+.g-pl-path {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px;
+  color: var(--md-sys-color-on-surface); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.g-pl-time {
+  width: 100%; height: 30px; padding: 0 6px; text-align: center; font: inherit; font-size: 12px;
+  border-radius: var(--rmf-radius-sm); border: 1px solid var(--md-sys-color-outline-variant);
+  background: var(--md-sys-color-surface-container-low); color: var(--md-sys-color-on-surface);
+}
+.g-pl-time:focus { outline: none; border-color: var(--md-sys-color-primary); }
+.g-pl-add {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px; border-radius: var(--rmf-radius-sm);
+  background: var(--md-sys-color-surface-container);
+}
+.g-pl-add .nv-control { flex: 1; min-width: 0; }
+
+/* ─────────────────────────────────────────────────────────────────
+   12. Console de debug
+   Superfície invertida (M3 inverse-surface) — legível nos dois temas,
+   sem cravar preto.
+   ───────────────────────────────────────────────────────────────── */
+.g-console {
+  height: 20rem; overflow-y: auto; padding: 12px 16px;
+  display: flex; flex-direction: column; gap: 2px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; line-height: 1.5;
+  background: var(--md-sys-color-inverse-surface);
+  color: var(--md-sys-color-inverse-on-surface);
+}
+.g-console__line {
+  padding-bottom: 4px; margin-bottom: 4px; word-break: break-all;
+  border-bottom: 1px solid color-mix(in srgb, var(--md-sys-color-inverse-on-surface) 12%, transparent);
+}
+.g-console__time { color: var(--md-sys-color-inverse-primary); }
+.g-console__arrow { color: var(--rmf-success); }
+.g-console__empty {
+  margin-top: 16px; text-align: center; font-style: italic;
+  color: color-mix(in srgb, var(--md-sys-color-inverse-on-surface) 60%, transparent);
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   13. Conectar Celular
+   ───────────────────────────────────────────────────────────────── */
+.g-qr-wrap {
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  padding-top: 16px; border-top: 1px solid var(--md-sys-color-outline-variant);
+}
+.g-qr {
+  padding: 12px; border-radius: var(--rmf-radius-md);
+  background: #FFFFFF;                                  /* o QR precisa de fundo branco real */
+  border: 1px solid var(--md-sys-color-outline-variant);
+}
+.g-qr img { display: block; width: 14rem; height: 14rem; }
+.g-kv {
+  width: 100%; padding: 10px 12px; border-radius: var(--rmf-radius-sm);
+  background: var(--md-sys-color-surface-container);
+  font-size: 12px; color: var(--md-sys-color-on-surface); word-break: break-all;
+}
+.g-kv dt { display: inline; font-weight: 400; color: var(--md-sys-color-on-surface-variant); }
+.g-kv dd { display: inline; margin: 0; font-weight: 600; }
+.g-kv__row + .g-kv__row { margin-top: 4px; }
+.g-kv__row--mono dd { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 400; }
