@@ -42,6 +42,8 @@ body.nv-body {
 @media (min-width: 1024px) {
   .g-main { padding: 24px; gap: 24px; grid-template-columns: 400px minmax(0, 1fr); }
   .g-sidebar { position: sticky; top: 24px; align-self: start; }
+  /* Precificação ocupa a largura toda (a barra lateral de terminais some) */
+  .g-main.is-full { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* ─────────────────────────────────────────────────────────────────
@@ -50,29 +52,57 @@ body.nv-body {
    não num bloco de cor. `is-scrolled` acompanha o conteúdo rolando
    por baixo (mesmo degrau do .m3-appbar do design system).
    ───────────────────────────────────────────────────────────────── */
-/* O padding do elemento é reservado ao Window Controls Overlay (header.css);
-   o respiro visual vive no __inner, para não brigar com o env(titlebar-*). */
+/* O padding do elemento fica reservado ao Window Controls Overlay
+   (header.css, env(titlebar-*)); o respiro visual vive nas áreas internas.
+
+   Layout em grade. No celular a marca e o botão dividem a 1ª linha e as abas
+   principais ocupam a 2ª, cheias. No desktop tudo vira uma linha só, com as
+   abas centradas entre a marca (col. 1) e as ações (col. 3) — as duas colunas
+   1fr se equilibram, então o grupo do meio fica de fato no centro. */
 .g-appbar {
   position: sticky; top: 0; z-index: 40; flex-shrink: 0;
+  display: grid; align-items: center;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "lead actions" "nav nav";
   background: var(--md-sys-color-surface);
   color: var(--md-sys-color-on-surface);
   transition: background-color .2s ease;
 }
 /* Sem linha divisória: a separação em M3 vem do degrau de cor ao rolar. */
 .g-appbar.is-scrolled { background: var(--md-rmf-appbar-scrolled); }
-.g-appbar__inner {
-  display: flex; align-items: center; justify-content: space-between; gap: 8px;
-  height: var(--md-rmf-appbar-height); padding: 0 8px 0 16px;
+
+.g-appbar__lead {
+  grid-area: lead; min-width: 0;
+  display: flex; align-items: center; gap: 12px;
+  height: var(--md-rmf-appbar-height); padding-left: 16px;
 }
-.g-appbar__lead  { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .g-appbar__logo  { height: 28px; width: auto; object-fit: contain; }
+
+/* Abas principais (Monitores / Precificação) — .nv-tab do design system,
+   sem a underline de largura cheia: só o indicador da aba ativa. */
+.g-appbar__nav { grid-area: nav; box-shadow: none; background: transparent; }
+.g-appbar__nav .nv-tab { height: 48px; }
+.g-appbar__nav .nv-tab__badge { margin-left: 2px; }
+
+@media (min-width: 900px) {
+  .g-appbar {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    grid-template-areas: "lead nav actions";
+  }
+  .g-appbar__nav .nv-tab {
+    flex: 0 0 auto; height: var(--md-rmf-appbar-height); padding: 0 24px; min-width: 170px;
+  }
+}
 .g-appbar__title {
   font-family: var(--md-ref-typeface-brand);
   font-size: 22px; font-weight: 500; line-height: 28px; letter-spacing: 0;
   color: var(--md-sys-color-on-surface);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.g-appbar__actions { display: flex; align-items: center; gap: 4px; }
+.g-appbar__actions {
+  grid-area: actions; justify-self: end;
+  display: flex; align-items: center; gap: 4px; padding-right: 8px;
+}
 
 /* Botão de ícone da app-bar (M3 standard icon button, alvo de 48px) */
 .g-iconbtn {
@@ -160,7 +190,9 @@ body.nv-body {
    4. Abas — usa .nv-tabs/.nv-tab do design system, só ajusta a
    pílula do badge de divergentes.
    ───────────────────────────────────────────────────────────────── */
-.nv-tabs { background: var(--md-sys-color-surface-container-low); }
+/* Só as abas DENTRO de um card ganham fundo próprio. As da app bar são
+   transparentes de propósito, para acompanhar o degrau de cor da rolagem. */
+.g-card > .nv-tabs { background: var(--md-sys-color-surface-container-low); }
 .nv-tab__badge {
   display: inline-flex; align-items: center; justify-content: center;
   min-width: 18px; height: 18px; padding: 0 5px; border-radius: var(--rmf-radius-full);

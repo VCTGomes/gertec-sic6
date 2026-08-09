@@ -13,7 +13,10 @@ const io     = new Server(server);
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.get('/', (req, res) => {
+// Abas principais da interface. São a MESMA página: o caminho só diz qual aba
+// abre (a sub-aba de Monitores continua na query string). Precisam existir no
+// servidor para o link direto e o F5 funcionarem em /precificacao.
+app.get(['/', '/precificacao'], (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'gertec.html'));
 });
 

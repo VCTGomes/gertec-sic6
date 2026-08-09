@@ -43,26 +43,31 @@
 
     <!-- M3 Top App Bar (small) — superfície neutra, igual à do app -->
     <header class="g-appbar wco-header" id="appbar">
-        <div class="g-appbar__inner">
-            <div class="g-appbar__lead">
-                <a href="/" class="g-iconbtn wco-no-drag hidden" title="Voltar para a Home">
-                    <i class="fa-solid fa-house"></i>
-                </a>
-                <img src="/res/logo.png" alt="Logo MD" class="g-appbar__logo" onerror="this.style.display='none'">
-                <h1 class="g-appbar__title">Monitor de Terminais</h1>
-            </div>
-            <div class="g-appbar__actions">
-                <button onclick="abrirModalConfig()" class="g-appbar__btn wco-no-drag" title="Ajustes">
-                    <i class="fa-solid fa-gear"></i>
-                    <span>Ajustes</span>
-                </button>
-            </div>
+        <div class="g-appbar__lead">
+            <img src="/res/logo.png" alt="Logo MD" class="g-appbar__logo" onerror="this.style.display='none'">
+            <h1 class="g-appbar__title">Monitor de Terminais</h1>
+        </div>
+        <!-- Abas principais: Monitores (/) e Precificação (/precificacao) -->
+        <nav class="g-appbar__nav nv-tabs wco-no-drag" role="tablist">
+            <button id="tabTopBtn_monitores" onclick="mudarAbaPrincipal('monitores')" class="nv-tab tab-active">
+                <i class="fa-solid fa-display"></i> Monitores
+            </button>
+            <button id="tabTopBtn_precificacao" onclick="mudarAbaPrincipal('precificacao')" class="nv-tab">
+                <i class="fa-solid fa-tag"></i> Precificação
+                <span id="badgePrecificacao" class="nv-tab__badge hidden"></span>
+            </button>
+        </nav>
+        <div class="g-appbar__actions">
+            <button onclick="abrirModalConfig()" class="g-appbar__btn wco-no-drag" title="Ajustes">
+                <i class="fa-solid fa-gear"></i>
+                <span>Ajustes</span>
+            </button>
         </div>
     </header>
 
     <div class="g-scroll" id="scroller">
-    <main class="g-main">
-        <div class="g-sidebar">
+    <main class="g-main" id="mainGrid">
+        <div class="g-sidebar" id="sidebarTerminais">
             <section class="g-card">
                 <div class="g-sechead">
                     <h2 class="g-sechead__title">
@@ -78,7 +83,7 @@
             </section>
         </div>
 
-        <section class="g-card">
+        <section class="g-card" id="view_monitores">
             <div class="nv-tabs" role="tablist">
                 <button id="tabMainBtn_leituras" onclick="mudarAbaMain('leituras')" class="nv-tab tab-active">
                     <i class="fa-solid fa-barcode"></i> Leituras Recentes
@@ -88,10 +93,6 @@
                 </button>
                 <button id="tabMainBtn_leitores" onclick="mudarAbaMain('leitores')" class="nv-tab">
                     <i class="fa-solid fa-chart-simple"></i> Leitores Mais Usados
-                </button>
-                <button id="tabMainBtn_precificacao" onclick="mudarAbaMain('precificacao')" class="nv-tab">
-                    <i class="fa-solid fa-tag"></i> Precificação
-                    <span id="badgePrecificacao" class="nv-tab__badge hidden"></span>
                 </button>
             </div>
 
@@ -179,79 +180,79 @@
                     <div id="pagLeitorBar"></div>
                 </div>
             </div>
+        </section>
 
-            <!-- ── Precificação ─────────────────────────────────────────────
-                 Produtos com preço alterado (ESTOQUE ou SIC Delphi, via
-                 tabest1.ultreaj) cruzados com a última etiqueta impressa.
-                 O histórico de impressões é unificado: estoque, app e
-                 terminais, com retenção de 7 dias. ──────────────────────── -->
-            <div id="tabMain_precificacao" class="g-tabpanel hidden">
-                <div class="g-sechead">
-                    <h3 class="g-sechead__title">
-                        Preços Alterados
-                        <span class="g-sechead__sub">
-                            <span id="precResumoFiltrados">0</span> de <span id="precResumoTotal">0</span> ·
-                            <span id="precResumoDivergentes" class="g-strong-danger">0</span> divergente(s)
-                        </span>
-                    </h3>
-                    <div class="g-sechead__tools g-filterbar">
-                        <div class="rmf-seg">
-                            <button data-prec-janela="1" onclick="precTrocarJanela(1)" class="rmf-seg__btn is-active">Hoje</button>
-                            <button data-prec-janela="2" onclick="precTrocarJanela(2)" class="rmf-seg__btn">Ontem</button>
-                            <button data-prec-janela="7" onclick="precTrocarJanela(7)" class="rmf-seg__btn">7 dias</button>
-                        </div>
-                        <label class="g-check g-check--danger">
-                            <input type="checkbox" id="chkPrecDivergentes" onchange="precToggleDivergentes()">
-                            <span>Só divergentes</span>
-                        </label>
-                        <div class="nv-control nv-control--search g-search">
-                            <i class="fa-solid fa-magnifying-glass nv-control__search-ic"></i>
-                            <input type="text" id="precBusca" oninput="filtrarPrecificacao()" placeholder="Filtrar por nome ou código...">
-                        </div>
-                        <button onclick="carregarPrecificacao()" class="g-textbtn" title="Recarregar">
-                            <i class="fa-solid fa-arrows-rotate"></i> Atualizar
-                        </button>
+        <!-- ── Precificação ─────────────────────────────────────────────────
+             Aba principal própria (/precificacao). Produtos com preço alterado
+             (ESTOQUE ou SIC Delphi, via tabest1.ultreaj) cruzados com a última
+             etiqueta impressa. O histórico de impressões é unificado: estoque,
+             app e terminais, com retenção de 7 dias. ────────────────────── -->
+        <section class="g-card hidden" id="view_precificacao">
+            <div class="g-sechead">
+                <h3 class="g-sechead__title">
+                    Preços Alterados
+                    <span class="g-sechead__sub">
+                        <span id="precResumoFiltrados">0</span> de <span id="precResumoTotal">0</span> ·
+                        <span id="precResumoDivergentes" class="g-strong-danger">0</span> divergente(s)
+                    </span>
+                </h3>
+                <div class="g-sechead__tools g-filterbar">
+                    <div class="rmf-seg">
+                        <button data-prec-janela="1" onclick="precTrocarJanela(1)" class="rmf-seg__btn is-active">Hoje</button>
+                        <button data-prec-janela="2" onclick="precTrocarJanela(2)" class="rmf-seg__btn">Ontem</button>
+                        <button data-prec-janela="7" onclick="precTrocarJanela(7)" class="rmf-seg__btn">7 dias</button>
                     </div>
+                    <label class="g-check g-check--danger">
+                        <input type="checkbox" id="chkPrecDivergentes" onchange="precToggleDivergentes()">
+                        <span>Só divergentes</span>
+                    </label>
+                    <div class="nv-control nv-control--search g-search">
+                        <i class="fa-solid fa-magnifying-glass nv-control__search-ic"></i>
+                        <input type="text" id="precBusca" oninput="filtrarPrecificacao()" placeholder="Filtrar por nome ou código...">
+                    </div>
+                    <button onclick="carregarPrecificacao()" class="g-textbtn" title="Recarregar">
+                        <i class="fa-solid fa-arrows-rotate"></i> Atualizar
+                    </button>
                 </div>
-                <div class="g-tablewrap">
-                    <table class="g-table g-table--xwide">
-                        <thead>
-                            <tr>
-                                <th>Produto</th>
-                                <th>Categoria</th>
-                                <th class="g-cell-right">Preço Atual</th>
-                                <th class="g-cell-right">Última Etiqueta</th>
-                                <th class="g-cell-center">Impresso em</th>
-                                <th class="g-cell-center">Situação</th>
-                                <th class="g-cell-center">Ação</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tabelaPrecificacao">
-                            <tr><td colspan="7"><div class="g-tableempty">Aguardando dados...</div></td></tr>
-                        </tbody>
-                    </table>
-                </div>
+            </div>
+            <div class="g-tablewrap">
+                <table class="g-table g-table--xwide">
+                    <thead>
+                        <tr>
+                            <th>Produto</th>
+                            <th>Categoria</th>
+                            <th class="g-cell-right">Preço Atual</th>
+                            <th class="g-cell-right">Última Etiqueta</th>
+                            <th class="g-cell-center">Impresso em</th>
+                            <th class="g-cell-center">Situação</th>
+                            <th class="g-cell-center">Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaPrecificacao">
+                        <tr><td colspan="7"><div class="g-tableempty">Aguardando dados...</div></td></tr>
+                    </tbody>
+                </table>
+            </div>
 
-                <div class="g-sechead g-sechead--sub g-sechead--click" onclick="togglePainelImpressoes()">
-                    <h3 class="g-sechead__title">
-                        Etiquetas Impressas
-                        <span class="g-sechead__sub">últimos 7 dias · estoque, app e terminais</span>
-                    </h3>
-                    <i id="chevronImpressoes" class="fa-solid fa-chevron-down g-chevron" style="transform: rotate(-90deg)"></i>
-                </div>
-                <div id="painelImpressoes" class="g-tablewrap hidden">
-                    <table class="g-table g-table--wide">
-                        <thead>
-                            <tr>
-                                <th>Produto</th>
-                                <th class="g-cell-right">Preço Impresso</th>
-                                <th class="g-cell-center">Quando</th>
-                                <th class="g-cell-center">Origem</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tabelaImpressoes"></tbody>
-                    </table>
-                </div>
+            <div class="g-sechead g-sechead--sub g-sechead--click" onclick="togglePainelImpressoes()">
+                <h3 class="g-sechead__title">
+                    Etiquetas Impressas
+                    <span class="g-sechead__sub">últimos 7 dias · estoque, app e terminais</span>
+                </h3>
+                <i id="chevronImpressoes" class="fa-solid fa-chevron-down g-chevron" style="transform: rotate(-90deg)"></i>
+            </div>
+            <div id="painelImpressoes" class="g-tablewrap hidden">
+                <table class="g-table g-table--wide">
+                    <thead>
+                        <tr>
+                            <th>Produto</th>
+                            <th class="g-cell-right">Preço Impresso</th>
+                            <th class="g-cell-center">Quando</th>
+                            <th class="g-cell-center">Origem</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaImpressoes"></tbody>
+                </table>
             </div>
         </section>
     </main>
@@ -619,31 +620,68 @@
             }
         }
 
-        // ── Abas ↔ URL (query string: ?recentes, ?maisbuscados, ?leitoresusados) ──
-        const ABA_PARAM = { leituras: 'recentes', ranking: 'maisbuscados', leitores: 'leitoresusados', precificacao: 'precificacao' };
-        const PARAM_ABA = { recentes: 'leituras', maisbuscados: 'ranking', leitoresusados: 'leitores', precificacao: 'precificacao' };
+        // ── Navegação ↔ URL ─────────────────────────────────────────────────
+        // Dois níveis: a aba principal é o caminho (/ ou /precificacao) e, dentro
+        // de Monitores, a sub-aba é a query string (?recentes, ?maisbuscados,
+        // ?leitoresusados).
+        const ABA_PARAM = { leituras: 'recentes', ranking: 'maisbuscados', leitores: 'leitoresusados' };
+        const PARAM_ABA = { recentes: 'leituras', maisbuscados: 'ranking', leitoresusados: 'leitores' };
+        const VIEWS = ['monitores', 'precificacao'];
+        let abaAtual = 'leituras';   // sub-aba corrente de Monitores
 
         function abaDaURL() {
             const q = (location.search || '').replace(/^\?/, '').split(/[&=]/)[0].toLowerCase();
             return PARAM_ABA[q] || 'leituras';
         }
 
+        function viewDaURL() {
+            if (/^\/precificacao\/?$/i.test(location.pathname)) return 'precificacao';
+            // Compatibilidade com o endereço antigo (/?precificacao); o
+            // replaceState da inicialização já reescreve para /precificacao.
+            const q = (location.search || '').replace(/^\?/, '').split(/[&=]/)[0].toLowerCase();
+            return q === 'precificacao' ? 'precificacao' : 'monitores';
+        }
+
+        // URL canônica de um estado: /precificacao ou /?<sub-aba>
+        function urlDoEstado(view, aba) {
+            return view === 'precificacao' ? '/precificacao' : '/?' + (ABA_PARAM[aba] || 'recentes');
+        }
+
+        function mudarAbaPrincipal(view, atualizarURL = true) {
+            if (!VIEWS.includes(view)) view = 'monitores';
+            VIEWS.forEach(v => {
+                document.getElementById(`view_${v}`).classList.toggle('hidden', v !== view);
+                document.getElementById(`tabTopBtn_${v}`).classList.toggle('tab-active', v === view);
+            });
+            // A barra lateral de terminais pertence a Monitores; a Precificação
+            // usa a largura toda.
+            const ehPrec = view === 'precificacao';
+            document.getElementById('sidebarTerminais').classList.toggle('hidden', ehPrec);
+            document.getElementById('mainGrid').classList.toggle('is-full', ehPrec);
+
+            if (atualizarURL) history.pushState({ view, aba: abaAtual }, '', urlDoEstado(view, abaAtual));
+
+            // A Precificação consulta o SIC a cada abertura — não vale manter
+            // em memória, o preço muda por fora (ESTOQUE e Delphi).
+            if (ehPrec) carregarPrecificacao();
+        }
+
         function mudarAbaMain(aba, atualizarURL = true) {
-            ['leituras', 'ranking', 'leitores', 'precificacao'].forEach(a => {
+            if (!ABA_PARAM[aba]) aba = 'leituras';
+            abaAtual = aba;
+            Object.keys(ABA_PARAM).forEach(a => {
                 document.getElementById(`tabMain_${a}`).classList.add('hidden');
                 document.getElementById(`tabMainBtn_${a}`).classList.remove('tab-active');
             });
             document.getElementById(`tabMain_${aba}`).classList.remove('hidden');
             document.getElementById(`tabMainBtn_${aba}`).classList.add('tab-active');
-            if (atualizarURL) history.pushState({ aba }, '', '?' + (ABA_PARAM[aba] || 'recentes'));
-
-            // A Precificação consulta o SIC a cada abertura — não vale manter
-            // em memória, o preço muda por fora (ESTOQUE e Delphi).
-            if (aba === 'precificacao') carregarPrecificacao();
+            if (atualizarURL) history.pushState({ view: 'monitores', aba }, '', urlDoEstado('monitores', aba));
         }
 
         window.addEventListener('popstate', (e) => {
-            mudarAbaMain((e.state && e.state.aba) || abaDaURL(), false);
+            const st = e.state || {};
+            mudarAbaMain(st.aba || abaDaURL(), false);
+            mudarAbaPrincipal(st.view || viewDaURL(), false);
         });
 
         // ── Abertura/fechamento animado de modais ───────────────────────────
@@ -1262,10 +1300,12 @@
             }
         }
 
-        // Seleciona a aba conforme a URL (?recentes / ?maisbuscados / ?leitoresusados)
-        const abaInicial = abaDaURL();
-        history.replaceState({ aba: abaInicial }, '', '?' + (ABA_PARAM[abaInicial] || 'recentes'));
+        // Estado inicial conforme a URL: /precificacao ou / + sub-aba na query
+        const viewInicial = viewDaURL();
+        const abaInicial  = abaDaURL();
+        history.replaceState({ view: viewInicial, aba: abaInicial }, '', urlDoEstado(viewInicial, abaInicial));
         mudarAbaMain(abaInicial, false);
+        mudarAbaPrincipal(viewInicial, false);
 
         // Carrega impressos e apelidos salvos assim que a página abre
         carregarImpressos().then(() => renderizarLeituras(false));
